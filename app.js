@@ -3,6 +3,8 @@ var bodyParser = require('body-parser');
 var path = require('path');
 var expressValidator = require('express-validator');
 var mysql = require('mysql');
+var session = require('express-session');const crypto = require('crypto');
+const hash = crypto.createHash('sha256');
 
 //Database Setup
 var con = mysql.createConnection({
@@ -19,15 +21,18 @@ con.connect(function (err) {
 		con.query("USE `matcha`");
 		console.log("Database created");
 		con.query("CREATE TABLE IF NOT EXISTS `matcha`.`users` ("+
-		"id int NOT NULL AUTO_INCREMENT,"+
+		"id int UNIQUE NOT NULL AUTO_INCREMENT,"+
 		"first_name varchar(100) NOT NULL,"+
 		"last_name varchar(100) NOT NULL,"+
-		"email varchar(100) NOT NULL,"+
+		"email varchar(100) UNIQUE NOT NULL,"+
+		"password varchar(1000) NOT NULL,"+
+		"verif varchar(1000) NOT NULL,"+
 		"sexuality TINYINT NOT NULL,"+
-		"bio varchar(2000) NOT NULL,"+
+		"gender TINYINT NOT NULL,"+
+		"bio varchar(2000),"+
 		"fame int NOT NULL DEFAULT 0,"+
-		"location varchar(100) NOT NULL,"+
-		"profilepic blob(4294967295) NOT NULL,"+
+		"location varchar(100),"+
+		"profilepic blob(4294967295),"+
 		"pic1 blob(4294967295),"+
 		"pic2 blob(4294967295),"+
 		"pic3 blob(4294967295),"+
@@ -50,6 +55,9 @@ app.set('views', path.join(__dirname, 'views'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({extended: false}));
 
+// Session Middleware
+app.use(session({secret: 'iloveuit'}));
+
 // Set Static Path
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -59,6 +67,7 @@ app.use(function(req, res, next){
 	next();
 });
 
+// Validator
 app.use(expressValidator({
 	errorFormatter: function(param, msg, value) {
 		var namespace = param.split('.'),
@@ -76,58 +85,153 @@ app.use(expressValidator({
 	}
 }));
 
-var users = [
-	{
-		id: 1,
-		first_name: 'John',
-		last_name: 'Doe',
-		email: 'johndoe@gmail.com'
-	},
-	{
-		id: 1,
-		first_name: 'Jim',
-		last_name: 'Due',
-		email: 'jimdue@gmail.com'
-	},
-	{
-		id: 3,
-		first_name: 'Jill',
-		last_name: 'Dae',
-		email: 'jilldae@gmail.com'
-	}
-]
+app.get('/', function(req, res) {
+	if (req.session.user)
+		res.render('index', {
+			title: 'Home',
+			session: req.session
+		});
+	else
+		res.render('index', {
+			title: 'Home',
+		});
+});
 
-app.get('/', function(req, res){
+app.get('/login', function(req, res){
+	if (req.session.user)
+		res.render('index', {
+			title: 'Login',
+			session: req.session
+		});
+	else
+		res.render('index', {
+			title: 'Login',
+		});
+});
+
+app.get('/signup', function(req, res){
+	if (req.session.user)
+		res.render('index', {
+			title: 'Signup',
+			session: req.session
+		});
+	else
+		res.render('index', {
+			title: 'Signup',
+		});
+});
+
+app.get('/profile', function(req, res){
+	if (req.session.user)
+		res.render('index', {
+			title: 'Profile',
+			session: req.session
+		});
+	else
+		res.render('index', {
+			title: 'Profile',
+		});
+});
+
+app.get('/logout', function(req, res){
+	req.session.destroy();
 	res.render('index', {
-		title: 'Profile',
-		users: users
+		title: 'Home',
 	});
 });
 
-app.post('/users/add', function (req, res) {
+app.get('/chat', function(req, res){
+	if (req.session.user)
+		res.render('index', {
+			title: 'Chat',
+			session: req.session
+		});
+	else
+		res.render('index', {
+			title: 'Chat',
+		});
+});
 
-	req.checkBody('first_name', 'First Name is Required').notEmpty();
-	req.checkBody('last_name', 'Last Name is Required').notEmpty();
+app.post('/login', function (req, res) {
+
+	req.checkBody('email', 'Not Valid Email Format').isEmail();
 	req.checkBody('email', 'Email is Required').notEmpty();
+	req.checkBody('password', 'Password is Required').notEmpty();
+	req.checkBody('password', 'Password Must Be at Least 8 Characters Long and Contain at Least: 1 Special, Capital, Numeric and Lower Case Character').matches(/^(?=.*\d)(?=.*[^a-zA-Z\d])(?=.*[a-z])(?=.*[A-Z]).{8,}$/);
 
 	var errors = req.validationErrors();
 
 	if (errors) {
 		res.render('index', {
-			title: 'Profile',
-			users: users,
-			errors: errors
+			title: 'Login',
+			errors: errors,
+			current: {
+				email: req.body.email
+			}
+		});
+	} else {	
+		var user = null;
+		con.query("SELECT * FROM `users` WHERE email = " + mysql.escape(req.body.email) + "LIMIT 1", function (err, result, fields) {
+			if (err) throw err;
+			if (!result.length)
+			{
+				errors = [
+					{
+						msg: 'Invalid Login'
+					}
+				];
+				res.render('index', {
+					title: 'Login',
+					errors: errors,
+					current: {
+						email: req.body.email
+					}
+				});
+			} else {
+				req.session.user = {
+					id: result[0].id,
+					first_name: result[0].first_name,
+					last_name: result[0].last_name,
+					email: result[0].email
+				}
+				console.log(req.session);
+				res.redirect('./');
+			}
+		});
+	}
+});
+
+app.post('/signup', function (req, res) {
+	console.log(req.body);
+
+	req.checkBody('email', 'Not Valid Email Format').isEmail();
+	req.checkBody('email', 'Email is Required').notEmpty();
+	req.checkBody('password', 'Password is Required').notEmpty();
+	req.checkBody('password', 'Password Must Be at Least 8 Characters Long and Contain at Least: 1 Special, Capital, Numeric and Lower Case Character').matches(/^(?=.*\d)(?=.*[^a-zA-Z\d])(?=.*[a-z])(?=.*[A-Z]).{8,}$/);
+	req.checkBody('confirm', 'Passwords Must Match').equals(req.body.password);
+	req.checkBody('first_name', 'First Name is Required').notEmpty();
+	req.checkBody('last_name', 'Last Name is Required').notEmpty();
+
+	var errors = req.validationErrors();
+
+	if (errors) {
+		res.render('index', {
+			title: 'Signup',
+			errors: errors,
+			current: {
+				email: req.body.email ? req.body.email : "",
+				first_name: req.body.first_name ? req.body.first_name : "",
+				last_name: req.body.last_name ? req.body.last_name : "",
+				gender: req.body.gender ? req.body.gender : "",
+				preference: req.body.preference ? req.body.preference : ""
+			}
 		});
 		console.log('FAIL');
 	} else {
-
-		var newUser = {
-			first_name: req.body.first_name,
-			last_name: req.body.last_name,
-			email: req.body.email,
-		}
-		users.
+		req.session.email = req.body.email;
+		req.session.password = req.body.password;
 		console.log('SUCCESS');
+		res.redirect('./');
 	}
 });
 

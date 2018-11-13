@@ -3,7 +3,52 @@
 		<meta charset="utf-8" />
 		<meta http-equiv="X-UA-Compatible" content="IE=edge">
 		<title>Matcha</title>
-		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 		<link rel="stylesheet" type="text/css" media="screen" href="main.css" />
+		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+		<script src="https://code.jquery.com/jquery-3.1.1.js" integrity="sha256-16cdPddA6VdVInumRGo6IbivbERE8p7CQR3HzTBuELA=" crossorigin="anonymous"></script>
 	</head>
-	<body>
+	<nav class="navbar navbar-expand-lg navbar-light">
+		<a class="navbar-brand" href="./">Matcha</a>
+		<button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+		<span class="navbar-toggler-icon"></span>
+		</button>
+	
+		<div class="collapse navbar-collapse" id="navbarSupportedContent">
+		<ul class="navbar-nav mr-auto">
+			<% if (title == 'Home') { %>
+				<li class="nav-item active">
+			<% } else { %>
+				<li class="nav-item">
+			<% } %>
+				<a class="nav-link" href="./">Home</a>
+			</li>
+			<% if (title == 'Profile' || title == 'Login' || title == 'Signup') { %>
+				<li class="nav-item dropdown active">
+			<% } else { %>
+				<li class="nav-item dropdown">
+			<% } %>
+				<a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+					<%= locals.session ? session.user.first_name : 'User'; %>
+				</a>
+				<div class="dropdown-menu" <%- locals.session ? ('aria-labelledby=' + session.user.first_name) : 'aria-labelledby="User"'; %>>
+					<% if (locals.session) { %>
+						<a class="dropdown-item" href="./profile">Profile</a>
+						<a class="dropdown-item" href="./logout">Logout</a>
+					<% } else { %>
+						<a class="dropdown-item" href="./login">Log In</a>
+						<a class="dropdown-item" href="./signup">Sign Up</a>
+					<% } %>
+					
+				</div>
+			</li>
+			<% if (title == 'Chat') { %>
+				<li class="nav-item active">
+			<% } else { %>
+				<li class="nav-item">
+			<% } %>
+				<a class="nav-link" href="./chat">Chat</a>
+			</li>
+		</ul>
+		</div>
+	</nav>

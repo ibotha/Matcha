@@ -1,31 +1,23 @@
 <% include partials/header %>
-
-	<h1>Add User</h1>
-	<% if(errors) { %>
-		<ul>
-		<% errors.forEach(function(error){ %>
-			<li><%= error.msg %></li>
-		<% }) %>
-		</ul>
-	<% } %>
-	<form method="POST" action="/users/add">
-		<label>First Name</label><br />
-		<input type="text" name="first_name">
-		<br />
-		<label>Last Name</label><br />
-		<input type="text" name="last_name">
-		<br />
-		<label>Email</label><br />
-		<input type="text" name="email">
-		<br />
-		<input type="submit" value="submit">
-	</form>
-	<h1><%= title %></h1>
-	<ul>
-	<% users.forEach(function(user){ %>
-		<li>
-		<%= user.first_name %> <%= user.last_name %>
-		</li>
-	<% }) %>
-	</ul>
+<body>
+<% switch (title) { case 'Home': %>
+	<%include partials/home %>
+<% break; %>
+<%	case 'Chat': %>
+	<%include partials/chat %>
+<% break; %>
+<%	case 'Login': %>
+	<%include user/login %>
+<% break; %>
+<%	case 'Signup': %>
+	<%include user/signup %>
+<% break; %>
+<%	case 'Profile': %>
+	<%include user/profile %>
+<% break; %>
+<%	default: %>
+	<h5>:(</h5>
+<% break; %>
+<% } %>
+</body>
 <% include partials/footer %>
