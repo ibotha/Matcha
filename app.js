@@ -4,7 +4,22 @@ var path = require('path');
 var expressValidator = require('express-validator');
 var mysql = require('mysql');
 var session = require('express-session');const crypto = require('crypto');
-const hash = crypto.createHash('sha256');
+const genset = {
+	Male: 0,
+	Female: 1,
+	Other: 2
+}
+
+// HASHING
+function change(str)
+{
+	const hash = crypto.createHash('sha256');
+
+	hash.update(str);
+	var ret = hash.digest('hex');
+	hash.end();
+	return ret;
+}
 
 //Database Setup
 var con = mysql.createConnection({
@@ -27,10 +42,11 @@ con.connect(function (err) {
 		"email varchar(100) UNIQUE NOT NULL,"+
 		"password varchar(1000) NOT NULL,"+
 		"verif varchar(1000) NOT NULL,"+
-		"sexuality TINYINT NOT NULL,"+
+		"preference TINYINT NOT NULL,"+
 		"gender TINYINT NOT NULL,"+
 		"bio varchar(2000),"+
 		"fame int NOT NULL DEFAULT 0,"+
+		"valid int NOT NULL DEFAULT 0,"+
 		"location varchar(100),"+
 		"profilepic blob(4294967295),"+
 		"pic1 blob(4294967295),"+
@@ -122,14 +138,21 @@ app.get('/signup', function(req, res){
 });
 
 app.get('/profile', function(req, res){
+	con.query("SELECT * FROM `users` WHERE id = " + mysql.escape(req.query.user) + "LIMIT 1", function (err, result, fields) {
+		if (err) throw err;
+		user = result[0];
+	});
+	console.log(user);
 	if (req.session.user)
 		res.render('index', {
 			title: 'Profile',
-			session: req.session
+			session: req.session,
+			user: user
 		});
 	else
 		res.render('index', {
 			title: 'Profile',
+			user: user
 		});
 });
 
@@ -157,7 +180,6 @@ app.post('/login', function (req, res) {
 	req.checkBody('email', 'Not Valid Email Format').isEmail();
 	req.checkBody('email', 'Email is Required').notEmpty();
 	req.checkBody('password', 'Password is Required').notEmpty();
-	req.checkBody('password', 'Password Must Be at Least 8 Characters Long and Contain at Least: 1 Special, Capital, Numeric and Lower Case Character').matches(/^(?=.*\d)(?=.*[^a-zA-Z\d])(?=.*[a-z])(?=.*[A-Z]).{8,}$/);
 
 	var errors = req.validationErrors();
 
@@ -169,8 +191,7 @@ app.post('/login', function (req, res) {
 				email: req.body.email
 			}
 		});
-	} else {	
-		var user = null;
+	} else {
 		con.query("SELECT * FROM `users` WHERE email = " + mysql.escape(req.body.email) + "LIMIT 1", function (err, result, fields) {
 			if (err) throw err;
 			if (!result.length)
@@ -188,22 +209,35 @@ app.post('/login', function (req, res) {
 					}
 				});
 			} else {
-				req.session.user = {
-					id: result[0].id,
-					first_name: result[0].first_name,
-					last_name: result[0].last_name,
-					email: result[0].email
+				if (change(req.body.password) == result[0].password)
+				{
+					req.session.user = {
+						id: result[0].id,
+						first_name: result[0].first_name,
+						last_name: result[0].last_name,
+						email: result[0].email
+					}
+					res.redirect('./');
+				} else {
+					errors = [
+						{
+							msg: 'Incorrect Login'
+						}
+					];
+					res.render('index', {
+						title: 'Login',
+						errors: errors,
+						current: {
+							email: req.body.email
+						}
+					});
 				}
-				console.log(req.session);
-				res.redirect('./');
 			}
 		});
 	}
 });
 
 app.post('/signup', function (req, res) {
-	console.log(req.body);
-
 	req.checkBody('email', 'Not Valid Email Format').isEmail();
 	req.checkBody('email', 'Email is Required').notEmpty();
 	req.checkBody('password', 'Password is Required').notEmpty();
@@ -213,25 +247,50 @@ app.post('/signup', function (req, res) {
 	req.checkBody('last_name', 'Last Name is Required').notEmpty();
 
 	var errors = req.validationErrors();
-
+	var current = {
+		email: req.body.email ? req.body.email : "",
+		first_name: req.body.first_name ? req.body.first_name : "",
+		last_name: req.body.last_name ? req.body.last_name : "",
+		gender: req.body.gender ? req.body.gender : "",
+		preference: req.body.preference ? req.body.preference : ""
+	};
 	if (errors) {
 		res.render('index', {
 			title: 'Signup',
 			errors: errors,
-			current: {
-				email: req.body.email ? req.body.email : "",
-				first_name: req.body.first_name ? req.body.first_name : "",
-				last_name: req.body.last_name ? req.body.last_name : "",
-				gender: req.body.gender ? req.body.gender : "",
-				preference: req.body.preference ? req.body.preference : ""
+			current: current
+		});
+	} else {	
+		var user = null;
+		con.query("SELECT * FROM `users` WHERE email = " + mysql.escape(req.body.email) + "LIMIT 1", function (err, result, fields) {
+			if (err) throw err;
+			if (!result.length)
+			{
+				con.query("INSERT INTO `users` (`first_name`, `last_name`, `email`, `password`, `verif`, `preference`, `gender`) VALUES ("+
+					mysql.escape(req.body.first_name) + ","+
+					mysql.escape(req.body.last_name) + ","+
+					mysql.escape(req.body.email) + ","+
+					mysql.escape(change(req.body.password)) + ","+
+					mysql.escape(change(Math.random().toString())) + ","+
+					mysql.escape(genset[req.body.preference]) + ","+
+					mysql.escape(genset[req.body.gender]) +
+					")", function (err) {
+					if (err) throw err;
+					res.redirect('./');
+				});
+			} else {
+				errors = [
+					{
+						msg: 'Email already taken'
+					}
+				];
+				res.render('index', {
+					title: 'Signup',
+					errors: errors,
+					current: current
+				});
 			}
 		});
-		console.log('FAIL');
-	} else {
-		req.session.email = req.body.email;
-		req.session.password = req.body.password;
-		console.log('SUCCESS');
-		res.redirect('./');
 	}
 });
 

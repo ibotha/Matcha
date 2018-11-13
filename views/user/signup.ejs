@@ -1,4 +1,4 @@
-<div class="container" id="holder">
+<div class="container floating" id="holder">
 	<h1 style="text-align: center;">Sign Up</h1>
 	<% include ../partials/error %>
 	<form method="POST" action="signup">
@@ -47,7 +47,7 @@
 			</select>
 		</div>
 		<div class="form-group">
-			<label for="preference">Sexuality</label>
+			<label for="preference">Preference</label>
 			<select class="form-control" id="preference" name="preference">
 				<% if (locals.current) switch (current.preference) { case 'Male': %>
 					<option>Male</option>

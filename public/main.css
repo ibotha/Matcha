@@ -14,15 +14,26 @@ body
 	border-radius: 10px;
 }
 
-.container
-{
-	background-color: white;
-	border-radius: 10px;
-	margin: 20px;
-	padding: 20px;
-	box-shadow: 0px 0px 20px black;
-	z-index: 1;
+@media (min-width: 992px) {
+	.floating
+	{
+		background-color: white;
+		border-radius: 10px;
+		padding: 10px;
+		box-shadow: 0px 0px 20px black;
+		z-index: 1;
+	}
 }
+
+@media (max-width: 991px) {
+	.floating
+	{
+		background-color: white;
+		padding: 10px;
+		border-bottom: 2px groove gray;
+		z-index: 1;
+	}
+	}
 
 .footer
 {
@@ -48,15 +59,20 @@ body
 	color: inherit !important;
 }
 
-nav
+.navtop
 {
-	padding: 0 !important;
-	background-color: white !important;
+	
 	box-shadow: 0px 0px 20px black;
 	z-index: 2;
 	position: fixed !important;
 	top: 0 !important;
 	width: 100%;
+}
+
+nav
+{
+	padding: 0 !important;
+	background-color: white !important;
 }
 
 .navbar-brand
@@ -84,4 +100,32 @@ nav
 .btn:focus
 {
 	outline-color: crimson !important;
+}
+
+.row
+{
+	margin: 5px;
+}
+
+p
+{
+	overflow-wrap: break-word;
+}
+
+.profile-pic-container
+{
+	margin: auto;
+	width: 100px;
+	height: 100px;
+	border-radius: 50%;
+	overflow: hidden;
+	border: 2px solid black;
+}
+
+.profile-pic
+{
+	display: block;
+	max-height: 100px;
+	max-width: 100px;
+	margin: auto;
 }
