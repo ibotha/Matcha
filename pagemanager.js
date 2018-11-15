@@ -1,5 +1,6 @@
 const database = require('./database.js');
 const crypto = require('crypto');
+const nodemailer = require('nodemailer');
 
 const genset = {
 	Male: 0,
