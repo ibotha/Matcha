@@ -1,4 +1,5 @@
 <div class="container">
+	<% const genset = { Male: 0, Female: 1, Other: 2, 0: 'Male', 1: 'Female', 2: 'Other' } %>
 	<div class="row floating">
 		<div class="col-md-2">
 			<div class="profile-pic-container">
@@ -9,13 +10,58 @@
 			<h1 class="display-3"><%= user.first_name + " " + user.last_name %></h1>
 		</div>
 		<div class="col-md-4">
-			<h4>Gender: Male</h4>
-			<h4>Preference: Female</h4>
+			<h4>Gender: <%= genset[user.gender] %></h4>
+			<h4>Preference: <%= genset[user.preference] %></h4>
 		</div>
 	</div>
 	<div class="row mb-3"></div>
 	<div class="row">
+		<div class="col-lg-2 floating">
 		<% if (locals.session && user.id == session.user.id) { %>
+			<div class="dropdown">
+				<button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenu1" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+					Add Interest
+				</button>
+				<ul class="dropdown-menu">
+					<% cats.forEach(cat => { %>
+						<h3 style="text-align: center;"><%= cat.name %></h3>
+						<li class="dropdown-divider"></li>
+						<% cat.interests.forEach(int => { %>
+							<li class="dropdown-item"><a href=<%- "addinterest?interest=" + escape(int.name) %>><%= int.name %></a></li>
+						<% }); %>
+					</li>
+					<% }); %>
+				</ul>
+			</div>
+		<% } %>
+			<h3>Interests</h3>
+			<ul>
+				<% user.interests.forEach(interest => { %>
+					<li>
+						<%= interest %>
+						<% if (locals.session && user.id == session.user.id) { %>
+							<a href=<%- '"removeinterest?remove=' + interest + '"' %> style="color: rgba(0, 0, 0, 0.1)"> X</a>
+						<% } %>
+					</li>
+				<% }); %>
+			</ul>
+		</div>
+		<div class="col-lg-1"></div>
+		<div class="col-lg-6 floating">
+			<h3 style="text-align: center;">About</h3>
+			<% if (locals.session && user.id == session.user.id) { %>
+				<form action="updatebio" method="POST">
+					<div class="form-group">
+						<textarea class="form-control" id="bio" name="bio"><%= user.bio %></textarea>
+					</div>
+					<button class="btn" type="submit">Submit</button>
+				</form>
+			<% } else { %>
+				<p style="margin: auto !important;"><%= user.bio %></p>
+			<% } %>
+		</div>
+		<% if (locals.session && user.id == session.user.id) { %>
+			<div class="col-lg-1"></div>
 			<div class="col-lg-2 floating">					
 				<nav class="navbar navbar-light">
 					<h3>Account</h3>
@@ -28,43 +74,8 @@
 					</div>
 				</nav>
 			</div>
-			<div class="col-lg-1"></div>
 		<% } else { %>
 			<div class="col-lg-3"></div>
 		<% } %>
-		<div class="col-lg-6 floating">
-			<h3 style="text-align: center;">About</h3>
-			<p style="margin: auto !important;"><%= user.bio %></p>
-			<% if (locals.session && user.id == session.user.id) { %>
-				<button class="btn">Edit</button>
-			<% } %>
-		</div>
-		<div class="col-lg-1"></div>
-		<div class="col-lg-2 floating">
-			<h3>Interests</h3>
-			<ul>
-				<li>Puppies</li>
-				<li>Puppies</li>
-				<li>Puppies</li>
-				<li>Puppies</li>
-				<li>Puppies</li>
-				<li>Puppies</li>
-				<li>Puppies</li>
-				<li>Puppies</li>
-				<li>Puppies</li>
-				<li>Puppies</li>
-			</ul>
-			<% if (locals.session && user.id == session.user.id) { %>
-				<form method="POST" action="addinterest">
-					<div class="form-group">
-						<label for="interest">Add New</label>
-						<input type="text" class="form-control" id="interest" name="interest">
-					</div>
-					<div class="form-group">
-						<button class="btn" type="submit">add</button>
-					</div>
-				</form>
-			<% } %>
-		</div>
 	</div>
 </div>
