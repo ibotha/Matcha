@@ -74,6 +74,7 @@ nav
 {
 	background-color: crimson !important;
 	border-color: crimson !important;
+	color: white !important;
 }
 
 .btn:focus
@@ -94,19 +95,13 @@ p
 .profile-pic-container
 {
 	margin: auto;
-	width: 100px;
-	height: 100px;
-	border-radius: 50%;
+	width: 100%;
+	padding-top: 100% !important;
+	border-radius: 50% !important;
 	overflow: hidden;
-	border: 2px solid black;
-}
-
-.profile-pic
-{
-	display: block;
-	max-height: 100px;
-	max-width: 100px;
-	margin: auto;
+	background-size: 100%;
+	background-position: center;
+	background-repeat: no-repeat;
 }
 
 #bio
@@ -121,18 +116,28 @@ p
 	overflow-y: auto;
 }
 
+.floating
+{
+	background-color: white;
+	border-radius: 10px;
+	margin-bottom: 20px;
+	padding: 10px;
+	box-shadow: 0px 0px 20px black;
+}
+
 @media (min-width: 992px) {
-	.floating
+	.floating-change
 	{
 		background-color: white;
 		border-radius: 10px;
+		margin-bottom: 20px;
 		padding: 10px;
 		box-shadow: 0px 0px 20px black;
 	}
 }
 
 @media (max-width: 991px) {
-	.floating
+	.floating-change
 	{
 		background-color: white;
 		padding: 10px;

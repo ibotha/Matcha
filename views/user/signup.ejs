@@ -12,6 +12,9 @@
 			<input type="text" class="form-control" id="last_name" name="last_name" placeholder="Last Name" <%- locals.current ? ('value=' + current.last_name) : 'value=""'; %> >
 		</div>
 		<div class="form-group">
+			<input type="number" min="0" class="form-control" id="age" name="age" placeholder="Age" <%- locals.current ? ('value=' + current.age) : 'value=""'; %> >
+		</div>
+		<div class="form-group">
 			<input type="password" class="form-control" id="pwd" name="password" placeholder="Password">
 		</div>
 		<div class="form-group">
@@ -20,70 +23,20 @@
 		<div class="form-group">
 			<label for="gender">Gender</label>
 			<select class="form-control" id="gender" name="gender">
-				<% if (locals.current) switch (current.gender) { case 'Male': %>
-					<option>Male</option>
-					<option>Female</option>
-					<option>Other</option>
-				<% break; %>
-				<% case 'Female': %>
-					<option>Male</option>
-					<option selected="selected">Female</option>
-					<option>Other</option>
-			  	<% break; %>
-				<% case 'Other': %>
-					<option>Male</option>
-					<option>Female</option>
-					<option selected="selected">Other</option>
-				<% break; %>
-				<% default: %>
-					<option>Male</option>
-					<option>Female</option>
-					<option>Other</option>
-				<% break; } else { %>
-					<option>Male</option>
-					<option>Female</option>
-					<option>Other</option>
-				<% } %>
+				<option <%- (locals.current && current.gender == 'Male') ? 'selected="selected"' : "" %>>Male</option>
+				<option <%- (locals.current && current.gender == 'Female') ? 'selected="selected"' : "" %>>Female</option>
+				<option <%- (locals.current && current.gender == 'Other') ? 'selected="selected"' : "" %>>Other</option>
 			</select>
 		</div>
 		<div class="form-group">
 			<label for="preference">Preference</label>
 			<select class="form-control" id="preference" name="preference">
-				<% if (locals.current) switch (current.preference) { case 'Male': %>
-					<option>Male</option>
-					<option>Female</option>
-					<option>Other</option>
-				<% break; %>
-				<% case 'Female': %>
-					<option>Male</option>
-					<option selected="selected">Female</option>
-					<option>Other</option>
-			  	<% break; %>
-				<% case 'Other': %>
-					<option>Male</option>
-					<option>Female</option>
-					<option selected="selected">Other</option>
-				<% break; %>
-				<% default: %>
-					<option>Male</option>
-					<option>Female</option>
-					<option>Other</option>
-				<% break; } else { %>
-					<option>Male</option>
-					<option>Female</option>
-					<option>Other</option>
-				<% } %>
+					<option <%- (locals.current && current.preference == 'Bi-sexual') ? 'selected="selected"' : "" %>>Bi-Sexual</option>
+					<option <%- (locals.current && current.preference == 'Heterosexual') ? 'selected="selected"' : "" %>>Heterosexual</option>
+					<option <%- (locals.current && current.preference == 'Homosexual') ? 'selected="selected"' : "" %>>Homosexual</option>
+					<option <%- (locals.current && current.preference == 'Other') ? 'selected="selected"' : "" %>>Other</option>
 			</select>
 		</div>
-<!--		<div class="form-group">
-			<label for="interest">What Do You Like?</label>
-			<div id="interestscont"></div>
-		</div>
-		<div class="form-group">
-			<input class="form-control" id="interest">
-			<div id="add">Add</div>
-		</div>
-		  -->
 		<button type="submit" class="btn btn-primary">Submit</button>
 		<a href="./login">Or Log In</a>
 	</form>

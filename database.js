@@ -16,6 +16,7 @@ var tables = {
 	"bio varchar(2000),"+
 	"fame int NOT NULL DEFAULT 0,"+
 	"valid int NOT NULL DEFAULT 0,"+
+	"age int NOT NULL,"+
 	"location varchar(100),"+
 	"profilepic blob(4294967295),"+
 	"pic1 blob(4294967295),"+
@@ -72,8 +73,8 @@ con = mysql.createConnection({
 });
 con.connect(createDatabase);
 
-exports.getCon = function() {
-	return con;
-}
+exports.con = con;
 
 exports.escape = mysql.escape;
+
+exports.query = con.query;
