@@ -22,7 +22,7 @@ var transporter = nodemailer.createTransport(
 
 var passerr = null;
 
-function sendVerif(user, type = 'verif') {
+function sendVerif(user, type) {
 	var verif = change(Math.random().toString());
 	var newpass = Math.random().toString();
 	var message = {
@@ -30,7 +30,8 @@ function sendVerif(user, type = 'verif') {
 		subject: 'Matcha Account',
 		html:
 			'<h3>Greetings ' + user.first_name + '</h3>' +
-			'<p>' + type == 'verif' ?'Congradulations on your new Matcha account':('Your new password is "' + newpass + "\" Be sure to log in soon and change it to somthing you prefer") +'. To continue click <a href="http://localhost:3000/verify?verif=' + verif + '">here</a></p>'
+			'<p>' + ((type == 'verif') ? ('Congradulations on your new Matcha account. To verify your email click <a href="http://localhost:3000/verify?verif=' + verif + '">here</a>')
+			: ('Your new password is "' + newpass + "\" Be sure to log in soon and change it to something you prefer")) +'</p>'
 	};
 
 	if (type == 'verif')
@@ -54,22 +55,16 @@ function sendVerif(user, type = 'verif') {
 const genset = {
 	Male: 0,
 	Female: 1,
-	Other: 2,
-	Both: 3,
 	0: 'Male',
 	1: 'Female',
-	2: 'Other',
-	3: 'Both',
 }
 const prefset = {
 	Heterosexual: 0,
 	Homosexual: 1,
 	Bisexual: 2,
-	Other: 3,
 	0: 'Heterosexual',
 	1: 'Homosexual',
 	2: 'Bisexual',
-	3: 'Other'
 }
 
 function change(str)
@@ -85,8 +80,12 @@ function change(str)
 exports.loginForm = function (req, res) {
 	req.checkBody('email', 'Not Valid Email Format').isEmail();
 	req.checkBody('email', 'Email is Required').notEmpty();
+	req.checkBody('lat', 'Location err').notEmpty();
+	req.checkBody('lon', 'Location err').notEmpty();
+
 	var errors = null;
 	passerr = null;
+
 	if (req.body.forgot == 'true')
 	{
 		database.con.query("SELECT * FROM `users` WHERE email = " + database.escape(req.body.email) + " LIMIT 1", function (err, result, fields) {
@@ -111,7 +110,7 @@ exports.loginForm = function (req, res) {
 			if (err) throw err;
 			if (result[0])
 			{
-				sendVerif(result[0]);
+				sendVerif(result[0], 'verif');
 			}
 			else passerr = [{ msg: "Not an exsisting email or already validated"}];
 			res.render('index', {
@@ -132,13 +131,13 @@ exports.loginForm = function (req, res) {
 		if (errors) {
 			res.render('index', {
 				title: 'Login',
-				errors: errors.concat(passerr),
+				errors: errors ? errors.concat(passerr) : passerr,
 				current: {
 					email: req.body.email
 				}
 			});
 		} else {
-			database.con.query("SELECT * FROM `users` WHERE email = " + database.escape(req.body.email) + " AND `valid` = '1' LIMIT 1", function (err, result, fields) {
+			database.con.query("SELECT id, email, password, first_name, last_name, lat, lon, interests, preference, gender, fame, valid, age FROM `users` WHERE email = " + database.escape(req.body.email) + " AND `valid` = '1' LIMIT 1", function (err, result, fields) {
 				if (err) throw err;
 				if (!result.length)
 				{
@@ -153,13 +152,14 @@ exports.loginForm = function (req, res) {
 				} else {
 					if (change(req.body.password) == result[0].password)
 					{
-						req.session.user = {
-							id: result[0].id,
-							first_name: result[0].first_name,
-							last_name: result[0].last_name,
-							email: result[0].email
-						}
-						res.redirect('./');
+						database.con.query("UPDATE `users` SET lat = " + database.escape(req.body.lat) + ", lon = " + database.escape(req.body.lon) + " WHERE email = " + database.escape(req.body.email) + ";",
+						function (err)
+						{
+							if (err) throw err;
+							result[0].interests = JSON.parse(result[0].interests);
+											req.session.user = result[0];
+											res.redirect('./');
+						});
 					} else {
 						passerr = [{msg: 'Invalid Login'}];
 						res.render('index', {
@@ -179,11 +179,14 @@ exports.loginForm = function (req, res) {
 exports.signupForm = function (req, res) {
 	req.checkBody('email', 'Not Valid Email Format').isEmail();
 	req.checkBody('email', 'Email is Required').notEmpty();
+	req.checkBody('email', 'Email Too Long').isLength({max: 100});
 	req.checkBody('password', 'Password is Required').notEmpty();
 	req.checkBody('password', 'Password Must Be at Least 8 Characters Long and Contain at Least: 1 Special, Capital, Numeric and Lower Case Character').matches(/^(?=.*\d)(?=.*[^a-zA-Z\d])(?=.*[a-z])(?=.*[A-Z]).{8,}$/);
 	req.checkBody('confirm', 'Passwords Must Match').equals(req.body.password);
 	req.checkBody('first_name', 'First Name is Required').notEmpty();
+	req.checkBody('first_name', 'First Name Too Long').isLength({max: 20});
 	req.checkBody('last_name', 'Last Name is Required').notEmpty();
+	req.checkBody('last_name', 'Last Name Too Long').isLength({max: 20});
 	req.checkBody('age', 'Age is Required').notEmpty();
 
 	var errors = req.validationErrors();
@@ -218,7 +221,7 @@ exports.signupForm = function (req, res) {
 					database.escape(genset[req.body.gender]) +
 					")", function (err) {
 					if (err) throw err;
-					sendVerif(req.body);
+					sendVerif(req.body, 'verif');
 					res.redirect('./');
 				});
 			} else {
@@ -245,6 +248,8 @@ exports.profilePage = function(req, res){
 		database.con.query("SELECT * FROM `users` WHERE id = " + database.escape(req.query.user) + "LIMIT 1", function (err, result, fields) {
 			if (err) throw err;
 			var user = result[0];
+			if (!user.valid)
+				res.redirect('./');
 			if (user)
 			{
 				user.interests = JSON.parse(user.interests);
@@ -312,14 +317,47 @@ exports.profilePage = function(req, res){
 
 exports.homePage = function(req, res) {
 	if (req.session.user)
-		res.render('index', {
-			title: 'Home',
-			session: req.session
-		});
+	{
+		var dist = ", DIST("+req.session.user.lat+", "+req.session.user.lon+", lat, lon) AS dist";
+		var agediff = ", ABS("+req.session.user.age+" - age) AS diff";
+		var prefsearch = ' AND id <> ' + req.session.user.id + " AND";
+		switch (req.session.user.preference)
+		{
+			case 0:
+				prefsearch += " gender = " + database.escape(!req.session.user.gender ? 1 : 0) + " AND preference = " + database.escape(req.session.user.preference);
+			break;
+			case 1:
+				prefsearch += " gender = " + database.escape(req.session.user.gender) + " AND preference = " + database.escape(req.session.user.preference);
+			break;
+			case 2:
+				prefsearch += " (gender = '0' AND (preference = '2' OR preference = " + database.escape(!req.session.user.gender) + ")) OR (gender = '0' AND (preference = '2' OR preference = " + database.escape(req.session.user.gender) + "))";
+			break;
+		}
+	}
+
 	else
-		res.render('index', {
-			title: 'Home',
+		var prefsearch = '', dist = '', agediff = '';
+	var statement = "SELECT id, first_name, last_name, profilepic, age"+agediff+", fame, bio, gender, preference, interests"+dist+
+	" FROM `users` WHERE valid = 1" + prefsearch +
+	" ORDER BY " + (agediff ? "diff, " : "") + (dist ? "dist, " : "") + "fame DESC, id LIMIT 5;"
+	database.con.query(statement, function (err, result) {
+		if (err) throw err;
+		database.con.query("SELECT * FROM `interests`;", function (err, interests) {
+			if (req.session.user)
+				res.render('index', {
+					title: 'Home',
+					session: req.session,
+					users: result,
+					interests: interests
+				});
+			else
+				res.render('index', {
+					title: 'Home',
+					users: result,
+					interests: interests
+				});
 		});
+	});
 }
 
 exports.chatPage = function(req, res){
@@ -336,9 +374,7 @@ exports.chatPage = function(req, res){
 
 exports.logout = function(req, res){
 	req.session.destroy();
-	res.render('index', {
-		title: 'Home',
-	});
+	res.redirect('./');
 }
 
 exports.signupPage = function(req, res){
@@ -422,9 +458,19 @@ exports.removeinterest = function (req, res){
 exports.change = function (req, res){
 	passerr = null;
 	if (req.body.email){
-		database.con.query("UPDATE `users` SET `email` = " + database.escape(req.body.email) + " WHERE `id` = " + database.escape(req.session.user.id) + ";", function(err){if(err) throw err});
+		req.checkBody('email', 'Invalid Email').isEmail();
+		req.checkBody('email', 'Email Too Long').isLength({max: 100});
+		passerr = req.validationErrors();
+		if (!passerr)
+			database.con.query("UPDATE `users` SET `email` = " + database.escape(req.body.email) + " WHERE `id` = " + database.escape(req.session.user.id) + ";", function(err){if(err) throw err});
 	} else if (req.body.first_name && req.body.last_name){
-		database.con.query("UPDATE `users` SET `first_name` = " + database.escape(req.body.first_name) + ", `last_name` = " + database.escape(req.body.last_name) + " WHERE `id` = " + database.escape(req.session.user.id) + ";", function(err){if(err) throw err});
+		req.checkBody('first_name', 'First Name is Required').notEmpty();
+		req.checkBody('first_name', 'First Name Too Long').isLength({max: 20});
+		req.checkBody('last_name', 'Last Name is Required').notEmpty();
+		req.checkBody('last_name', 'Last Name Too Long').isLength({max: 20});
+		passerr = req.validationErrors();
+		if (!passerr)
+			database.con.query("UPDATE `users` SET `first_name` = " + database.escape(req.body.first_name) + ", `last_name` = " + database.escape(req.body.last_name) + " WHERE `id` = " + database.escape(req.session.user.id) + ";", function(err){if(err) throw err});
 	} else if (req.body.confirm && req.body.old_password && req.body.new_password){
 		req.checkBody('new_password', 'Password Must Be at Least 8 Characters Long and Contain at Least: 1 Special, Capital, Numeric and Lower Case Character').matches(/^(?=.*\d)(?=.*[^a-zA-Z\d])(?=.*[a-z])(?=.*[A-Z]).{8,}$/);
 		req.checkBody('confirm', 'Passwords Must Match').equals(req.body.new_password);
@@ -446,14 +492,11 @@ exports.change = function (req, res){
 }
 
 exports.verify = function (req, res){
-	console.log(req.query.verif);
 	database.con.query("UPDATE `users` SET `valid` = '1' WHERE verif = " + database.escape(req.query.verif) + ";", function(err){if (err) throw err});
 	res.redirect("./");
 }
 
 exports.addprofilepicture = function (req, res){
-	//console.log(req.files);
-	//req.files.forEach(file =)
 	var FileReader = require('filereader');
 	var reader = new FileReader();
 	reader.setNodeChunkedEncoding(true);
@@ -462,8 +505,62 @@ exports.addprofilepicture = function (req, res){
 		fs.readFile('./temp.' + req.files.profilepic.mimetype.split(/\//)[1], "base64", function (err, data) {
 			if (err) throw err;
 			var str = 'data:' + req.files.profilepic.mimetype + ';base64,' + data;
-			database.con.query("UPDATE `users` SET `profilepic` = " + database.escape(str) + " WHERE `id` = " + database.escape(req.session.user.id) + ";");
+			database.con.query("UPDATE `users` SET `profilepic` = " + database.escape(str) + " WHERE `id` = " + database.escape(req.session.user.id) + ";", function (err) { if (err) throw err; fs.unlink('./temp.' + req.files.profilepic.mimetype.split(/\//)[1], function () {res.redirect("./profile?user=" + req.session.user.id);})});
 		});
 	});
-	res.redirect("./profile?user=" + req.session.user.id);
+}
+
+exports.addpicture = function (req, res){
+	var FileReader = require('filereader');
+	var reader = new FileReader();
+	var done = 0;
+	reader.setNodeChunkedEncoding(true);
+	if (req.files.pic1)
+	{
+		req.files.pic1.mv(('./temp1.' + req.files.pic1.mimetype.split(/\//)[1]), function (err) {
+			if (err) throw err
+			fs.readFile('./temp1.' + req.files.pic1.mimetype.split(/\//)[1], "base64", function (err, data) {
+				if (err) throw err;
+				var str = 'data:' + req.files.pic1.mimetype + ';base64,' + data;
+				database.con.query("UPDATE `users` SET `pic1` = " + database.escape(str) + " WHERE `id` = " + database.escape(req.session.user.id) + ";", function (err) { if (err) throw err; fs.unlink('./temp1.' + req.files.pic1.mimetype.split(/\//)[1], function () {if (++done == 4) {console.log("w", done); res.redirect("./profile?user=" + req.session.user.id);} else console.log(done);;});});
+			});
+		});
+	}
+	else if (++done == 4) {console.log("w", done); res.redirect("./profile?user=" + req.session.user.id);} else console.log(done);;
+	if (req.files.pic2)
+	{
+		req.files.pic2.mv(('./temp2.' + req.files.pic2.mimetype.split(/\//)[1]), function (err) {
+			if (err) throw err
+			fs.readFile('./temp2.' + req.files.pic2.mimetype.split(/\//)[1], "base64", function (err, data) {
+				if (err) throw err;
+				var str = 'data:' + req.files.pic2.mimetype + ';base64,' + data;
+				database.con.query("UPDATE `users` SET `pic2` = " + database.escape(str) + " WHERE `id` = " + database.escape(req.session.user.id) + ";", function (err) { if (err) throw err; fs.unlink('./temp2.' + req.files.pic2.mimetype.split(/\//)[1], function () {if (++done == 4) {console.log("w", done); res.redirect("./profile?user=" + req.session.user.id);} else console.log(done);});});
+			});
+		});
+	}
+	else if (++done == 4) {console.log("w", done); res.redirect("./profile?user=" + req.session.user.id);} else console.log(done);;
+	if (req.files.pic3)
+	{
+		req.files.pic3.mv(('./temp3.' + req.files.pic3.mimetype.split(/\//)[1]), function (err) {
+			if (err) throw err
+			fs.readFile('./temp3.' + req.files.pic3.mimetype.split(/\//)[1], "base64", function (err, data) {
+				if (err) throw err;
+				var str = 'data:' + req.files.pic3.mimetype + ';base64,' + data;
+				database.con.query("UPDATE `users` SET `pic3` = " + database.escape(str) + " WHERE `id` = " + database.escape(req.session.user.id) + ";", function (err) { if (err) throw err; fs.unlink('./temp3.' + req.files.pic3.mimetype.split(/\//)[1], function () {if (++done == 4) {console.log("w", done); res.redirect("./profile?user=" + req.session.user.id);} else console.log(done);;});});
+			});
+		});
+	}
+	else if (++done == 4) {console.log("w", done); res.redirect("./profile?user=" + req.session.user.id);} else console.log(done);;
+	if (req.files.pic4)
+	{
+		req.files.pic4.mv(('./temp4.' + req.files.pic4.mimetype.split(/\//)[1]), function (err) {
+			if (err) throw err
+			fs.readFile('./temp4.' + req.files.pic4.mimetype.split(/\//)[1], "base64", function (err, data) {
+				if (err) throw err;
+				var str = 'data:' + req.files.pic4.mimetype + ';base64,' + data;
+				database.con.query("UPDATE `users` SET `pic4` = " + database.escape(str) + " WHERE `id` = " + database.escape(req.session.user.id) + ";", function (err) { if (err) throw err; fs.unlink('./temp4.' + req.files.pic4.mimetype.split(/\//)[1], function () {if (++done == 4) {console.log("w", done); res.redirect("./profile?user=" + req.session.user.id);} else console.log(done);});});
+			});
+		});
+	}
+	else if (++done == 4) {console.log("w", done); res.redirect("./profile?user=" + req.session.user.id);} else console.log(done);
 }

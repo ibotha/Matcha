@@ -41,25 +41,11 @@ exports.ready = function ready() {
 								if (err) throw err;
 								database.con.query("INSERT IGNORE INTO `interests` (`catagory`, `name`) VALUES ('" + result[0].id + "', '" + lin.interest + "');", function(err){
 										if (err) throw err;
+										console.log(lin);
 								});
 							});
 					});
 				});
 		});
-		/* lines.forEach(line => {
-			console.log('Insert', line);
-			database.con.query("SELECT * FROM `catagories` WHERE name = '"+ line.catagory +"';", function(err, result){
-				if (err) throw err;
-				database.con.query("SELECT * FROM `interests` WHERE name = '"+ line.interest +"';", function(err, result){
-					if (err) throw err;
-					if (!result.length)
-					{
-						database.con.query("INSERT INTO `interests` (`catagory`, `name`) VALUES ('" + catagory + "', '" + line.interest + "') WHERE NOT EXISTS;", function (err){
-							if (err) throw err;
-						});
-					}
-				});
-			});
-		}); */
 	});
 }

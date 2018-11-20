@@ -80,6 +80,8 @@ app.post('/change', pages.change);
 
 app.post('/addprofilepicture', pages.addprofilepicture);
 
+app.post('/addpicture', pages.addpicture);
+
 //Handle 404
 app.get('*', function(req, res) {res.render('error', {url: req.url})});
 app.post('*', function(req, res) {res.render('error', {url: req.url})});

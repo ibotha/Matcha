@@ -1,7 +1,7 @@
 body
 {
 	margin: 70px 0 45px 0 !important;
-	background-color: rgb(226, 226, 226) !important;
+	background-color: rgb(206, 206, 206) !important;
 	z-index: -1;
 }
 
@@ -96,6 +96,7 @@ p
 {
 	margin: auto;
 	width: 100%;
+	margin: 0 !important;
 	padding-top: 100% !important;
 	border-radius: 50% !important;
 	overflow: hidden;
@@ -125,6 +126,17 @@ p
 	box-shadow: 0px 0px 20px black;
 }
 
+.display-image
+{
+	width: 100%;
+	padding: 0 !important;
+}
+
+.hidden
+{
+	display: none !important;
+}
+
 @media (min-width: 992px) {
 	.floating-change
 	{
@@ -134,6 +146,15 @@ p
 		padding: 10px;
 		box-shadow: 0px 0px 20px black;
 	}
+	.floating-change > .divider
+	{
+		display: none !important;
+	}
+	#pictures
+	{
+		max-height: calc(100vh - 120px);
+		overflow-y: auto;
+	}
 }
 
 @media (max-width: 991px) {
@@ -141,7 +162,11 @@ p
 	{
 		background-color: white;
 		padding: 10px;
-		border-bottom: 2px groove gray;
 		z-index: 1;
+	}
+	.floating-change > .divider
+	{
+		margin: 20px auto;
+		border-top: 1px solid rgb(230, 230, 230);
 	}
 }

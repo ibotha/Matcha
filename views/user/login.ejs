@@ -8,9 +8,96 @@
 		<div class="form-group">
 			<input type="password" class="form-control" id="pwd" name="password" placeholder="password">
 		</div>
-		<button type="submit" class="btn btn-primary">Login</button>
+		<div class="form-group hidden">
+			<input type="text" class="form-control" id="lat" name="lat">
+		</div>
+		<div class="form-group hidden">
+			<input type="text" class="form-control" id="lon" name="lon">
+		</div>
+		<div class="form-group">
+			In order to match you to nearby people we need your location
+		</div>
+		<input type="button" class="btn" id="sub" value="Login">
 		<button type="submit" class="btn btn-primary" name="resend" value="true">Resend Verification</button>
 		<button type="submit" class="btn btn-primary" name="forgot" value="true">Forgot Password</button>
+		<button type="submit" class="btn btn-primary hidden" id="submit">Login</button>
+		<script>
+			$(document).on('keypress', 'input,select', function (e) {
+				if (e.which == 13) {
+					e.preventDefault();
+					document.getElementById("sub").click();
+				}
+			});
+			var lat = document.getElementById("lat");
+			var lon = document.getElementById("lon");
+			var alat, alon, blat, blon;
+			function ipLookUp () {
+				$.ajax('http://ip-api.com/json')
+				.then(
+					function success(response) {
+						alat = response.lat
+						alon = response.lon;
+					},
+
+					function fail(data, status) {
+						console.log('Request failed.  Returned status of',
+									status);
+					}
+				);
+			}
+			ipLookUp();
+
+			function getLocation() {
+				navigator.permissions.query({name:'geolocation'}).then(function(result) {
+					if (navigator.geolocation) {
+						if (result.state == 'granted')
+						{
+							navigator.geolocation.getCurrentPosition(showPosition);
+						}
+						if (result.state == 'denied')
+						{
+							check();
+						}
+						if (result.state == 'prompt')
+						{
+							setTimeout(function () {getLocation()}, 100);
+						}
+					}
+			});
+			}
+
+			function showPosition(position) {
+				blat = position.coords.latitude;
+				blon = position.coords.longitude;
+				check();
+			}
+
+			function check()
+			{
+				navigator.permissions.query({name:'geolocation'}).then(function(result) {
+					if (navigator.geolocation) {
+						if (result.state == 'granted')
+						{
+							lat.value = blat;
+							lon.value = blon;
+							document.getElementById("submit").click();
+						}
+						if (result.state == 'denied')
+						{
+							lat.value = alat;
+							lon.value = alon;
+							document.getElementById("submit").click();
+						}
+						if (result.state == 'prompt')
+						{
+							setTimeout(function () {getLocation()}, 100);
+						}
+					}
+					else document.getElementById("submit").click();
+				});
+			} 
+			document.getElementById("sub").addEventListener('click', function () {navigator.geolocation.getCurrentPosition(showPosition);getLocation();});
+		</script>
 		<a href="./signup">Or Sign Up</a>
 	</form>
 </div>

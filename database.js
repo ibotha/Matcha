@@ -17,7 +17,8 @@ var tables = {
 	"fame int NOT NULL DEFAULT 0,"+
 	"valid int NOT NULL DEFAULT 0,"+
 	"age int NOT NULL,"+
-	"location varchar(100),"+
+	"lat double,"+
+	"lon double,"+
 	"profilepic blob(4294967295),"+
 	"pic1 blob(4294967295),"+
 	"pic2 blob(4294967295),"+
@@ -35,8 +36,27 @@ var tables = {
 	"id int UNIQUE NOT NULL AUTO_INCREMENT,"+
 	"name varchar(100) UNIQUE NOT NULL,"+
 	"PRIMARY KEY (id)"+
-	")"
+	")",
+	distfunc:
+	'CREATE FUNCTION DIST(lat1 DOUBLE, lon1 DOUBLE, lat2 DOUBLE, lon2 DOUBLE) RETURNS DOUBLE ' +
+	'DETERMINISTIC ' +
+	'BEGIN ' +
+	'DECLARE valr double;' +
+	'DECLARE dlat double;' +
+	'DECLARE dlon double;' +
+	'DECLARE a double;' +
+	'DECLARE c double;' +
+	'DECLARE d double;' +
+	'SET valr = 6371.0;' +
+	'SET dlat = RADIANS(lat2 - lat1);' +
+	'SET dlon = RADIANS(lon2 - lon1);' +
+	'SET a = SIN(dlat / 2.0) * SIN(dlat / 2.0) + COS(RADIANS(lat1)) * COS(RADIANS(lat2)) * SIN(dlon / 2.0) * SIN(dlon / 2.0);' +
+	'SET c = (2.0 * ATAN2(SQRT(a), SQRT(1.0 - a)));' +
+	'SET d = valr * c;' +
+	'RETURN d;' +
+	'END'
 };
+
 
 //var pp = require('./populateinterests.js');
 
@@ -55,6 +75,13 @@ function createTables(err) {
 	con.query(tables.catagories, function (err) {
 		if (err) throw err;
 		console.log("catagories table created");
+	});
+	con.query("DROP FUNCTION DIST;", function (err) {
+		if (err) throw err;
+		con.query(tables.distfunc, function (err) {
+			if (err) throw err;
+			console.log("distfunc created");
+		});
 	});
 
 	//pp.ready();
@@ -76,5 +103,3 @@ con.connect(createDatabase);
 exports.con = con;
 
 exports.escape = mysql.escape;
-
-exports.query = con.query;

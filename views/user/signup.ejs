@@ -25,7 +25,6 @@
 			<select class="form-control" id="gender" name="gender">
 				<option <%- (locals.current && current.gender == 'Male') ? 'selected="selected"' : "" %>>Male</option>
 				<option <%- (locals.current && current.gender == 'Female') ? 'selected="selected"' : "" %>>Female</option>
-				<option <%- (locals.current && current.gender == 'Other') ? 'selected="selected"' : "" %>>Other</option>
 			</select>
 		</div>
 		<div class="form-group">
@@ -34,7 +33,6 @@
 					<option <%- (locals.current && current.preference == 'Bi-sexual') ? 'selected="selected"' : "" %>>Bi-Sexual</option>
 					<option <%- (locals.current && current.preference == 'Heterosexual') ? 'selected="selected"' : "" %>>Heterosexual</option>
 					<option <%- (locals.current && current.preference == 'Homosexual') ? 'selected="selected"' : "" %>>Homosexual</option>
-					<option <%- (locals.current && current.preference == 'Other') ? 'selected="selected"' : "" %>>Other</option>
 			</select>
 		</div>
 		<button type="submit" class="btn btn-primary">Submit</button>

@@ -4,10 +4,10 @@
 	<div class="row mb-2"></div>
 	<div class="row">
 		<div class="col-lg-3">
-		<div class="container floating-change">
+		<div class="container floating-change" style=<%- "'background-color: rgb(" + (200 + Math.random() * 55) + "," + (200 + Math.random() * 55) + "," + (200 + Math.random() * 55) + ") !important;'" %>>
 			<div class="profile-pic-container floating" id="pp-container"></div>
 			<script>
-				document.getElementById('pp-container').style.backgroundImage = <%- '\'URL("' + (user.profilepic ? user.profilepic : 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSgoOPVndTzH03mn8p_DWBLiSc5N2mYtMLma-Co3gVjDHIvXKIR2Q')+'")\'' %>;
+				document.getElementById('pp-container').style.backgroundImage = <%- '\'URL("' + (user.profilepic ? user.profilepic : 'https://png.pngtree.com/svg/20161013/dpi_user_default_avatar_116868.png')+'")\'' %>;
 			</script>
 			<% if (locals.session && user.id == session.user.id) { %>
 				<form action="addprofilepicture" method="post" encType="multipart/form-data">
@@ -15,43 +15,14 @@
 						<input type="file" class="form-control" accepts="image/*" id="profileupload" name="profilepic" required>
 					</div>
 					<div class="form-group">
-						<button type="submit" class="btn btn-primary">Change Profile Picture</button>
+						<button type="submit" id="profsub" class="btn btn-primary hidden">Change Profile Picture</button>
 					</div>
 				</form>
-				<script>
-
-					function logimage(e)
-					{
-						let file = null;
-					
-						for (let i = 0; i < e.length; i++) {
-							if (e[i].type.match(/^image\//)) {
-							file = e[i];
-							break;
-							}
-						}
-					
-						if (file !== null) {
-							var reader = new FileReader();
-							reader.readAsDataURL(file);
-							reader.onload = function () {
-								var str = reader.result;
-								document.getElementById('pp-container').style.backgroundImage = 'URL("'+str+'")';
-							};
-							reader.onerror = function (error) {
-								console.log('Error: ', error);
-							};
-						}
-					}
-
-					document.getElementById('profileupload').addEventListener('change', e => logimage(e.target.files))
-
-				</script>
 			<% } %>
 			<div class="dropdown-divider"></div>
-			<h1 class="display-3"><%= user.first_name + " " + user.last_name %></h1>
+			<h1 class="display-5"><%= user.first_name + " " + user.last_name %></h1>
 			<p>Gender: <%= genset[user.gender] %></p>
-			<p>Preference: <%= prefset[user.preference] %></p>
+			<p>Sexuality: <%= prefset[user.preference] %></p>
 			<p>Age: <%= user.age %></p>
 			<% if (locals.session && user.id == session.user.id) { %>
 				<h3>Account</h3>
@@ -68,7 +39,7 @@
 							<button class="btn dropdown-item form-control" type="submit">Change</button>
 						</div>
 					</form>
-				</div>
+					</div>
 				<div class="dropdown-divider"></div>
 				<div class="dropdown">
 					<button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
@@ -136,10 +107,15 @@
 					</form>
 				</div>
 				<% } %>
+				<div class="divider"></div>
 			</div>
 		</div>
+
+
+
+
 		<div class="col-lg-5">
-			<div class="container floating-change">
+			<div class="container floating-change" style=<%- "'background-color: rgb(" + (200 + Math.random() * 55) + "," + (200 + Math.random() * 55) + "," + (200 + Math.random() * 55) + ") !important;'" %>>
 				<% if (locals.session && user.id == session.user.id) { %>
 					<div class="dropdown">
 						<button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenu1" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
@@ -168,8 +144,9 @@
 						</li>
 					<% }); %>
 				</ul>
+				<div class="divider"></div>
 				</div>
-				<div class="container floating-change">
+				<div class="container floating-change" style=<%- "'background-color: rgb(" + (200 + Math.random() * 55) + "," + (200 + Math.random() * 55) + "," + (200 + Math.random() * 55) + ") !important;'" %>>
 				<h3 style="text-align: center;">About</h3>
 				<% if (locals.session && user.id == session.user.id) { %>
 					<form action="updatebio" method="POST">
@@ -181,10 +158,104 @@
 				<% } else { %>
 					<p style="margin: auto !important;"><%= user.bio %></p>
 				<% } %>
+				<div class="divider"></div>
 			</div>
 		</div>
+
+
+
+
 		<div class="col-lg-4">
-			<div class="container floating-change">
+			<div class="container floating-change" id="pictures" style=<%- "'background-color: rgb(" + (200 + Math.random() * 55) + "," + (200 + Math.random() * 55) + "," + (200 + Math.random() * 55) + ") !important;'" %>>
+				<% if (locals.session && user.id == session.user.id) { %>
+					<form action="addpicture" method="post" encType="multipart/form-data">
+				<% } %>
+				<img class="display-image floating" id="img1" src=<%- user.pic1 ? user.pic1 : "http://www.alkantara.pt/wp-content/themes/bloc/assets/img/blank.png" %>>
+				<% if (locals.session && user.id == session.user.id) { %>
+				<div class="form-group">
+					<input type="file" class="form-control" accepts="image/*" id="1upload" name="pic1">
+				</div>
+				<% } %>
+				<img class="display-image floating" id="img2" src=<%- user.pic2 ? user.pic2 : "http://www.alkantara.pt/wp-content/themes/bloc/assets/img/blank.png" %>>
+				<% if (locals.session && user.id == session.user.id) { %>
+				<div class="form-group">
+					<input type="file" class="form-control" accepts="image/*" id="2upload" name="pic2">
+				</div>
+				<% } %>
+				<img class="display-image floating" id="img3" src=<%- user.pic3 ? user.pic3 : "http://www.alkantara.pt/wp-content/themes/bloc/assets/img/blank.png" %>>
+				<% if (locals.session && user.id == session.user.id) { %>
+				<div class="form-group">
+					<input type="file" class="form-control" accepts="image/*" id="3upload" name="pic3">
+				</div>
+				<% } %>
+				<img class="display-image floating" id="img4" src=<%- user.pic4 ? user.pic4 : "http://www.alkantara.pt/wp-content/themes/bloc/assets/img/blank.png" %>>
+				<% if (locals.session && user.id == session.user.id) { %>
+				<div class="form-group">
+					<input type="file" class="form-control" accepts="image/*" id="4upload" name="pic4">
+				</div>
+				<div class="form-group">
+					<button type="submit" id="sub" class="btn btn-primary hidden">Upload New Pictures</button>
+				</div>
+				</form>
+				<script>
+
+					function logimage(e)
+					{
+						let file = null;
+					
+						for (let i = 0; i < e.length; i++) {
+							if (e[i].type.match(/^image\//)) {
+							file = e[i];
+							break;
+							}
+						}
+					
+						if (file !== null) {
+							var reader = new FileReader();
+							reader.readAsDataURL(file);
+							reader.onload = function () {
+								var str = reader.result;
+								document.getElementById("profsub").click();
+							};
+							reader.onerror = function (error) {
+								console.log('Error: ', error);
+							};
+						}
+					}
+
+					function logsecondary(e, id)
+					{
+						console.log(id);
+						let file = null;
+					
+						for (let i = 0; i < e.length; i++) {
+							if (e[i].type.match(/^image\//)) {
+							file = e[i];
+							break;
+							}
+						}
+					
+						if (file !== null) {
+							var reader = new FileReader();
+							reader.readAsDataURL(file);
+							reader.onload = function () {
+								var str = reader.result;
+								document.getElementById("sub").click();
+							};
+							reader.onerror = function (error) {
+								console.log('Error: ', error);
+							};
+						}
+					}
+
+					document.getElementById('profileupload').addEventListener('change', e => logimage(e.target.files));
+					document.getElementById('1upload').addEventListener('change', e => logsecondary(e.target.files, "img1"));
+					document.getElementById('2upload').addEventListener('change', e => logsecondary(e.target.files, "img2"));
+					document.getElementById('3upload').addEventListener('change', e => logsecondary(e.target.files, "img3"));
+					document.getElementById('4upload').addEventListener('change', e => logsecondary(e.target.files, "img4"));
+
+				</script>
+				<% } %>
 			</div>
 		</div>
 	</div>
