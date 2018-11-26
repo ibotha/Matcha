@@ -316,6 +316,7 @@ exports.homePage = function(req, res) {
 	if (req.session.user)
 	{
 		var dist = ", DIST("+req.session.user.lat+", "+req.session.user.lon+", lat, lon) AS dist";
+		var dist = ", SCORE("+JSON.stringify(req.session.user.interests)+", interests, fame) AS score";
 		var agediff = ", ABS("+req.session.user.age+" - age) AS diff";
 		var prefsearch = ' AND id <> ' + req.session.user.id + " AND";
 		switch (req.session.user.preference)
@@ -332,10 +333,10 @@ exports.homePage = function(req, res) {
 		}
 	}
 	else
-		var prefsearch = '', dist = '', agediff = '';
+		var prefsearch = '', dist = '', agediff = '', score = '';
 	var statement = "SELECT id, first_name, last_name, profilepic, age"+agediff+", fame, bio, gender, preference, interests"+dist+
 	" FROM `users` WHERE valid = 1" + prefsearch +
-	" ORDER BY " + (agediff ? "diff, " : "") + (dist ? "dist, " : "") + "fame DESC, id LIMIT 5;"
+	" ORDER BY " + (agediff ? "diff, " : "") + (score ? "score, " : "") + (dist ? "dist, " : "") + "fame DESC, id LIMIT 5;"
 	database.con.query(statement, function (err, result) {
 		if (err) throw err;
 		database.con.query("SELECT * FROM `interests`;", function (err, interests) {
