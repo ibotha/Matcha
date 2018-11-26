@@ -2,14 +2,12 @@ const database = require('./database.js');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 const fs = require('fs');
+const nope = require('./nope.js');
 
 var transporter = nodemailer.createTransport(
 	{
 		service: 'gmail',
-		auth: {
-			user: 'ibothawebadmi@gmail.com',
-			pass: '0JId034D4Mpx'
-		},
+		auth: nope.auth,
 		logger: false,
 		debug: false
 	},
@@ -47,7 +45,6 @@ function sendVerif(user, type) {
 		}
 
 		console.log('Message sent successfully!');
-		console.log(nodemailer.getTestMessageUrl(info));
 
 	});
 }
@@ -247,8 +244,8 @@ exports.profilePage = function(req, res){
 	if (req.query.user)
 		database.con.query("SELECT * FROM `users` WHERE id = " + database.escape(req.query.user) + "LIMIT 1", function (err, result, fields) {
 			if (err) throw err;
-			var user = result[0];
-			if (!user.valid)
+				var user = result[0];
+			if (!user || !user.valid)
 				res.redirect('./');
 			if (user)
 			{
@@ -334,7 +331,6 @@ exports.homePage = function(req, res) {
 			break;
 		}
 	}
-
 	else
 		var prefsearch = '', dist = '', agediff = '';
 	var statement = "SELECT id, first_name, last_name, profilepic, age"+agediff+", fame, bio, gender, preference, interests"+dist+
@@ -343,6 +339,7 @@ exports.homePage = function(req, res) {
 	database.con.query(statement, function (err, result) {
 		if (err) throw err;
 		database.con.query("SELECT * FROM `interests`;", function (err, interests) {
+			if (err) throw err;
 			if (req.session.user)
 				res.render('index', {
 					title: 'Home',
@@ -522,11 +519,11 @@ exports.addpicture = function (req, res){
 			fs.readFile('./temp1.' + req.files.pic1.mimetype.split(/\//)[1], "base64", function (err, data) {
 				if (err) throw err;
 				var str = 'data:' + req.files.pic1.mimetype + ';base64,' + data;
-				database.con.query("UPDATE `users` SET `pic1` = " + database.escape(str) + " WHERE `id` = " + database.escape(req.session.user.id) + ";", function (err) { if (err) throw err; fs.unlink('./temp1.' + req.files.pic1.mimetype.split(/\//)[1], function () {if (++done == 4) {console.log("w", done); res.redirect("./profile?user=" + req.session.user.id);} else console.log(done);;});});
+				database.con.query("UPDATE `users` SET `pic1` = " + database.escape(str) + " WHERE `id` = " + database.escape(req.session.user.id) + ";", function (err) { if (err) throw err; fs.unlink('./temp1.' + req.files.pic1.mimetype.split(/\//)[1], function () {if (++done == 4) {res.redirect("./profile?user=" + req.session.user.id);}});});
 			});
 		});
 	}
-	else if (++done == 4) {console.log("w", done); res.redirect("./profile?user=" + req.session.user.id);} else console.log(done);;
+	else if (++done == 4) {res.redirect("./profile?user=" + req.session.user.id);}
 	if (req.files.pic2)
 	{
 		req.files.pic2.mv(('./temp2.' + req.files.pic2.mimetype.split(/\//)[1]), function (err) {
@@ -534,11 +531,11 @@ exports.addpicture = function (req, res){
 			fs.readFile('./temp2.' + req.files.pic2.mimetype.split(/\//)[1], "base64", function (err, data) {
 				if (err) throw err;
 				var str = 'data:' + req.files.pic2.mimetype + ';base64,' + data;
-				database.con.query("UPDATE `users` SET `pic2` = " + database.escape(str) + " WHERE `id` = " + database.escape(req.session.user.id) + ";", function (err) { if (err) throw err; fs.unlink('./temp2.' + req.files.pic2.mimetype.split(/\//)[1], function () {if (++done == 4) {console.log("w", done); res.redirect("./profile?user=" + req.session.user.id);} else console.log(done);});});
+				database.con.query("UPDATE `users` SET `pic2` = " + database.escape(str) + " WHERE `id` = " + database.escape(req.session.user.id) + ";", function (err) { if (err) throw err; fs.unlink('./temp2.' + req.files.pic2.mimetype.split(/\//)[1], function () {if (++done == 4) {res.redirect("./profile?user=" + req.session.user.id);}});});
 			});
 		});
 	}
-	else if (++done == 4) {console.log("w", done); res.redirect("./profile?user=" + req.session.user.id);} else console.log(done);;
+	else if (++done == 4) {res.redirect("./profile?user=" + req.session.user.id);}
 	if (req.files.pic3)
 	{
 		req.files.pic3.mv(('./temp3.' + req.files.pic3.mimetype.split(/\//)[1]), function (err) {
@@ -546,11 +543,11 @@ exports.addpicture = function (req, res){
 			fs.readFile('./temp3.' + req.files.pic3.mimetype.split(/\//)[1], "base64", function (err, data) {
 				if (err) throw err;
 				var str = 'data:' + req.files.pic3.mimetype + ';base64,' + data;
-				database.con.query("UPDATE `users` SET `pic3` = " + database.escape(str) + " WHERE `id` = " + database.escape(req.session.user.id) + ";", function (err) { if (err) throw err; fs.unlink('./temp3.' + req.files.pic3.mimetype.split(/\//)[1], function () {if (++done == 4) {console.log("w", done); res.redirect("./profile?user=" + req.session.user.id);} else console.log(done);;});});
+				database.con.query("UPDATE `users` SET `pic3` = " + database.escape(str) + " WHERE `id` = " + database.escape(req.session.user.id) + ";", function (err) { if (err) throw err; fs.unlink('./temp3.' + req.files.pic3.mimetype.split(/\//)[1], function () {if (++done == 4) {res.redirect("./profile?user=" + req.session.user.id);}});});
 			});
 		});
 	}
-	else if (++done == 4) {console.log("w", done); res.redirect("./profile?user=" + req.session.user.id);} else console.log(done);;
+	else if (++done == 4) {res.redirect("./profile?user=" + req.session.user.id);}
 	if (req.files.pic4)
 	{
 		req.files.pic4.mv(('./temp4.' + req.files.pic4.mimetype.split(/\//)[1]), function (err) {
@@ -558,9 +555,9 @@ exports.addpicture = function (req, res){
 			fs.readFile('./temp4.' + req.files.pic4.mimetype.split(/\//)[1], "base64", function (err, data) {
 				if (err) throw err;
 				var str = 'data:' + req.files.pic4.mimetype + ';base64,' + data;
-				database.con.query("UPDATE `users` SET `pic4` = " + database.escape(str) + " WHERE `id` = " + database.escape(req.session.user.id) + ";", function (err) { if (err) throw err; fs.unlink('./temp4.' + req.files.pic4.mimetype.split(/\//)[1], function () {if (++done == 4) {console.log("w", done); res.redirect("./profile?user=" + req.session.user.id);} else console.log(done);});});
+				database.con.query("UPDATE `users` SET `pic4` = " + database.escape(str) + " WHERE `id` = " + database.escape(req.session.user.id) + ";", function (err) { if (err) throw err; fs.unlink('./temp4.' + req.files.pic4.mimetype.split(/\//)[1], function () {if (++done == 4) {res.redirect("./profile?user=" + req.session.user.id);}});});
 			});
 		});
 	}
-	else if (++done == 4) {console.log("w", done); res.redirect("./profile?user=" + req.session.user.id);} else console.log(done);
+	else if (++done == 4) {res.redirect("./profile?user=" + req.session.user.id);}
 }

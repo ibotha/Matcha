@@ -16,7 +16,6 @@
 						<span>Sexuality: <%= prefset[user.preference] %></span><br>
 						<span>Age: <%= user.age %></span><br>
 						<span>Fame: <%= user.fame %></span><br>
-						<% console.log(user.dist) %>
 						<% if (user.dist !== undefined) { %>
 							<span>Dist: <%= parseFloat(user.dist.toFixed(2)) %>km</span><br>
 						<% } %>

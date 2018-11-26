@@ -54,7 +54,33 @@ var tables = {
 	'SET c = (2.0 * ATAN2(SQRT(a), SQRT(1.0 - a)));' +
 	'SET d = valr * c;' +
 	'RETURN d;' +
-	'END'
+	'END',
+	hasfunc:
+	'CREATE FUNCTION `HASINTEREST`(`subinterests` VARCHAR(2000), `needle` INT(11)) RETURNS TINYINT(1) ' +
+	'NOT DETERMINISTIC ' +
+	'BEGIN ' +
+	'DECLARE i INT; ' +
+	'DECLARE sublen INT; ' +
+	'DECLARE comma INT; ' +
+	'SET sublen = LENGTH(subinterests); ' +
+	'SET i = 2; ' +
+	'WHILE(i < sublen - 1) DO ' +
+		'SET comma = LOCATE(\',\', subinterests, i); ' +
+		'IF comma = 0 THEN ' +
+			'IF CAST(SUBSTR(subinterests, i, sublen - i) AS UNSIGNED) = needle THEN ' +
+				'RETURN 1; ' +
+			'ELSE ' +
+				'RETURN 0; ' +
+			'END IF; ' +
+		'END IF; ' +
+		'IF CAST(SUBSTR(subinterests, i, comma - i) AS UNSIGNED) = needle THEN ' +
+			'RETURN 1; ' +
+		'END IF; ' +
+		'SET i = comma + 1; ' +
+	'END WHILE; ' +
+	'RETURN 0; ' +
+	'END',
+	scorefunc: "CREATE DEFINER=`root`@`localhost` FUNCTION `SCORE`(`subinterests` VARCHAR(2000), `interests` VARCHAR(2000), `fame` INT) RETURNS DOUBLE NOT DETERMINISTIC NO SQL SQL SECURITY DEFINER BEGIN DECLARE ret DOUBLE; DECLARE i INT; DECLARE sublen INT; DECLARE comma INT; DECLARE search VARCHAR(3); DECLARE interestmatch INT; SET interestmatch = 0; SET ret = fame; SET sublen = LENGTH(subinterests); SET i = 2; WHILE(i < sublen) DO SET comma = LOCATE(',', subinterests, i); IF comma = 0 THEN SET comma = sublen; END IF; SET search = CAST(SUBSTR(subinterests, i, comma - i) AS UNSIGNED); SET i = comma + 1; IF HASINTEREST(interests, search) THEN SET interestmatch = interestmatch + 1; END IF; END WHILE; SET ret = ret + POW(interestmatch, 3); RETURN ret; END",
 };
 
 
@@ -76,11 +102,25 @@ function createTables(err) {
 		if (err) throw err;
 		console.log("catagories table created");
 	});
-	con.query("DROP FUNCTION DIST;", function (err) {
+	con.query("DROP FUNCTION IF EXISTS DIST;", function (err) {
 		if (err) throw err;
 		con.query(tables.distfunc, function (err) {
 			if (err) throw err;
 			console.log("distfunc created");
+		});
+	});
+	con.query("DROP FUNCTION IF EXISTS HASINTEREST;", function (err) {
+		if (err) throw err;
+		con.query(tables.hasfunc, function (err) {
+			if (err) throw err;
+			console.log("hasfunc created");
+		});
+	});
+	con.query("DROP FUNCTION IF EXISTS SCORE;", function (err) {
+		if (err) throw err;
+		con.query(tables.scorefunc, function (err) {
+			if (err) throw err;
+			console.log("scorefunc created");
 		});
 	});
 
