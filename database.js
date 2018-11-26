@@ -80,7 +80,32 @@ var tables = {
 	'END WHILE; ' +
 	'RETURN 0; ' +
 	'END',
-	scorefunc: "CREATE DEFINER=`root`@`localhost` FUNCTION `SCORE`(`subinterests` VARCHAR(2000), `interests` VARCHAR(2000), `fame` INT) RETURNS DOUBLE NOT DETERMINISTIC NO SQL SQL SECURITY DEFINER BEGIN DECLARE ret DOUBLE; DECLARE i INT; DECLARE sublen INT; DECLARE comma INT; DECLARE search VARCHAR(3); DECLARE interestmatch INT; SET interestmatch = 0; SET ret = fame; SET sublen = LENGTH(subinterests); SET i = 2; WHILE(i < sublen) DO SET comma = LOCATE(',', subinterests, i); IF comma = 0 THEN SET comma = sublen; END IF; SET search = CAST(SUBSTR(subinterests, i, comma - i) AS UNSIGNED); SET i = comma + 1; IF HASINTEREST(interests, search) THEN SET interestmatch = interestmatch + 1; END IF; END WHILE; SET ret = ret + POW(interestmatch, 3); RETURN ret; END",
+	scorefunc: 
+	"CREATE DEFINER=`root`@`localhost` FUNCTION `SCORE`(`subinterests` VARCHAR(2000), `interests` VARCHAR(2000), `fame` INT) RETURNS DOUBLE NOT DETERMINISTIC " +
+	"BEGIN " +
+	"DECLARE ret DOUBLE; "+
+	"DECLARE i INT; "+
+	"DECLARE sublen INT; "+
+	"DECLARE comma INT; "+
+	"DECLARE search VARCHAR(3); "+
+	"DECLARE interestmatch INT; "+
+	"SET interestmatch = 0; "+
+	"SET ret = fame; "+
+	"SET sublen = LENGTH(subinterests); "+
+	"SET i = 2; "+
+	"WHILE(i < sublen) DO SET comma = LOCATE(',', subinterests, i); "+
+		"IF comma = 0 THEN "+
+			"SET comma = sublen; "+
+		"END IF; "+
+		"SET search = CAST(SUBSTR(subinterests, i, comma - i) AS UNSIGNED); "+
+		"SET i = comma + 1; "+
+		"IF HASINTEREST(interests, search) THEN "+
+		"SET interestmatch = interestmatch + 1; "+
+		"END IF; "+
+	"END WHILE; "+
+	"SET ret = ret + interestmatch; "+
+	"RETURN ret; "+
+	"END",
 };
 
 

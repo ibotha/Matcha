@@ -19,6 +19,9 @@
 						<% if (user.dist !== undefined) { %>
 							<span>Dist: <%= parseFloat(user.dist.toFixed(2)) %>km</span><br>
 						<% } %>
+						<% if (user.score !== undefined) { %>
+							<span>Score: <%= parseFloat(user.score.toFixed(2)) %></span><br>
+						<% } %>
 					</div>
 					<div class="col-lg-3">
 						<h3>Interests</h3>

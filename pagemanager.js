@@ -315,10 +315,10 @@ exports.profilePage = function(req, res){
 exports.homePage = function(req, res) {
 	if (req.session.user)
 	{
-		var dist = ", DIST("+req.session.user.lat+", "+req.session.user.lon+", lat, lon) AS dist";
-		var dist = ", SCORE("+JSON.stringify(req.session.user.interests)+", interests, fame) AS score";
-		var agediff = ", ABS("+req.session.user.age+" - age) AS diff";
-		var prefsearch = ' AND id <> ' + req.session.user.id + " AND";
+		var dist = ", DIST("+database.escape(req.session.user.lat)+", "+database.escape(req.session.user.lon)+", lat, lon) AS dist";
+		var score = ", SCORE("+database.escape(JSON.stringify(req.session.user.interests))+", interests, '30' + fame - ABS("+database.escape(req.session.user.age)+" - age) / ((age - 16) / 4) - DIST("+database.escape(req.session.user.lat)+", "+database.escape(req.session.user.lon)+", lat, lon) / 4) AS score";
+		var agediff = ", ABS("+database.escape(req.session.user.age)+" - age) AS diff";
+		var prefsearch = ' AND SCORE('+database.escape(JSON.stringify(req.session.user.interests))+', interests, \'30\' + fame - ABS('+database.escape(req.session.user.age)+' - age) / ((age - 16) / 4) - DIST('+database.escape(req.session.user.lat)+', '+database.escape(req.session.user.lon)+', lat, lon) / 4) > 0 AND id <> ' + database.escape(req.session.user.id) + " AND";
 		switch (req.session.user.preference)
 		{
 			case 0:
@@ -334,9 +334,10 @@ exports.homePage = function(req, res) {
 	}
 	else
 		var prefsearch = '', dist = '', agediff = '', score = '';
-	var statement = "SELECT id, first_name, last_name, profilepic, age"+agediff+", fame, bio, gender, preference, interests"+dist+
+	var statement = "SELECT id, first_name, last_name, profilepic, age"+agediff+", fame, bio, gender, preference, interests" + dist + score +
 	" FROM `users` WHERE valid = 1" + prefsearch +
-	" ORDER BY " + (agediff ? "diff, " : "") + (score ? "score, " : "") + (dist ? "dist, " : "") + "fame DESC, id LIMIT 5;"
+	" ORDER BY " + (score ? "score, " : "") + (dist ? "dist, " : "") + "fame DESC LIMIT 5;";
+	console.log(statement);
 	database.con.query(statement, function (err, result) {
 		if (err) throw err;
 		database.con.query("SELECT * FROM `interests`;", function (err, interests) {
