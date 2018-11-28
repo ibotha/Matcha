@@ -334,10 +334,9 @@ exports.homePage = function(req, res) {
 	}
 	else
 		var prefsearch = '', dist = '', agediff = '', score = '';
-	var statement = "SELECT id, first_name, last_name, profilepic, age"+agediff+", fame, bio, gender, preference, interests" + dist + score +
+	var statement = "SELECT id, first_name, last_name, pic1, profilepic, age"+agediff+", fame, bio, gender, preference, interests" + dist + score +
 	" FROM `users` WHERE valid = 1" + prefsearch +
 	" ORDER BY " + (score ? "score, " : "") + (dist ? "dist, " : "") + "fame DESC LIMIT 5;";
-	console.log(statement);
 	database.con.query(statement, function (err, result) {
 		if (err) throw err;
 		database.con.query("SELECT * FROM `interests`;", function (err, interests) {

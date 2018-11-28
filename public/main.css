@@ -1,6 +1,6 @@
 body
 {
-	margin: 70px 0 45px 0 !important;
+	margin: 50px 0 25px 0 !important;
 	background-color: rgb(206, 206, 206) !important;
 	z-index: -1;
 }
@@ -176,4 +176,54 @@ input[type = file]
 {
 	background-color: transparent;
 	border: 0;
+}
+
+#chat
+{
+	position: fixed;
+	bottom: 25px;
+	width: 95%;
+	display: flex;
+	margin-left: auto !important;
+	margin-right: auto !important;
+}
+
+#chat > #m
+{
+	width: calc(100% - 82px);
+	margin: 0;
+	margin-right: 2px;
+}
+
+#chat > .btn
+{
+	width: 80px;
+}
+
+#messages
+{
+	margin: 65px auto 0 auto !important;
+	height: calc(100vh - 180px);
+	display: flex;
+	flex-direction: column;
+}
+
+#messages > div
+{
+	overflow-wrap: break-word;
+}
+
+#messages > .other
+{
+	max-width: 95%;
+	margin-right: auto;
+	margin-left: 0;
+	background-color: rgb(245, 222, 222);
+}
+
+#messages > .local
+{
+	max-width: 90%;
+	margin-right: 0;
+	margin-left: auto;
 }

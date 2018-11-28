@@ -5,6 +5,7 @@ const expressValidator = require('express-validator');
 const session = require('express-session');
 const fileUpload = require('express-fileupload');
 const pages = require('./pagemanager.js');
+const io = require("socket.io")(server);
 
 //Database Setup
 
@@ -85,6 +86,10 @@ app.post('/addpicture', pages.addpicture);
 //Handle 404
 app.get('*', function(req, res) {res.render('error', {url: req.url})});
 app.post('*', function(req, res) {res.render('error', {url: req.url})});
+
+io.on('connection', function(socket){
+	console.log('a user connected');
+});
 
 app.listen(3000, function (){
 	console.log('Server started on port 3000...');
