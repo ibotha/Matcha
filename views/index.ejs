@@ -1,19 +1,19 @@
 <% include partials/header %>
 <body>
 <% switch (title) { case 'Home': %>
-	<%include partials/home %>
+	<% include partials/home %>
 <% break; %>
 <%	case 'Chat': %>
-	<%include partials/chat %>
+	<% include partials/chat %>
 <% break; %>
 <%	case 'Login': %>
-	<%include user/login %>
+	<% include user/login %>
 <% break; %>
 <%	case 'Signup': %>
-	<%include user/signup %>
+	<% include user/signup %>
 <% break; %>
 <%	case 'Profile': %>
-	<%include user/profile %>
+	<% include user/profile %>
 <% break; %>
 <%	default: %>
 	<h5>:(</h5>

@@ -112,6 +112,8 @@ var tables = {
 //var pp = require('./populateinterests.js');
 
 function createTables(err) {
+	
+	console.log("\n=================================\n\n");
 	if (err) throw err;
 	con.query("USE `matcha`");
 	console.log("Database created");
@@ -145,7 +147,8 @@ function createTables(err) {
 		if (err) throw err;
 		con.query(tables.scorefunc, function (err) {
 			if (err) throw err;
-			console.log("scorefunc created");
+			console.log("scorefunc created");	
+			console.log("\n=================================\n\n");
 		});
 	});
 
