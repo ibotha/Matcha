@@ -32,10 +32,24 @@ var tables = {
 	"catagory int NOT NULL,"+
 	"PRIMARY KEY (id)"+
 	")",
-	catagories: "CREATE TABLE IF NOT EXISTS `matcha`.`catagories` ("+
-	"id int UNIQUE NOT NULL AUTO_INCREMENT,"+
-	"name varchar(100) UNIQUE NOT NULL,"+
-	"PRIMARY KEY (id)"+
+	catagories: "CREATE TABLE IF NOT EXISTS `matcha`.`catagories` (" +
+	"id int UNIQUE NOT NULL AUTO_INCREMENT," +
+	"name varchar(100) UNIQUE NOT NULL," +
+	"PRIMARY KEY (id)" +
+	")",
+	messages: "CREATE TABLE IF NOT EXISTS `matcha`.`messages` (" +
+	"id int NOT NULL AUTO_INCREMENT," +
+	"chatid int NOT NULL," +
+	"reciever int NOT NULL," +
+	"message varchar(500) NOT NULL," +
+	"`creation` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP," +
+	"PRIMARY KEY (id)" +
+	")",
+	chats: "CREATE TABLE IF NOT EXISTS `matcha`.`chats` (" +
+	"id int UNIQUE NOT NULL AUTO_INCREMENT," +
+	"user1 int NOT NULL," +
+	"user2 int NOT NULL," +
+	"PRIMARY KEY (id)" +
 	")",
 	distfunc:
 	'CREATE FUNCTION DIST(lat1 DOUBLE, lon1 DOUBLE, lat2 DOUBLE, lon2 DOUBLE) RETURNS DOUBLE ' +
@@ -128,6 +142,14 @@ function createTables(err) {
 	con.query(tables.catagories, function (err) {
 		if (err) throw err;
 		console.log("catagories table created");
+	});
+	con.query(tables.messages, function (err) {
+		if (err) throw err;
+		console.log("messages table created");
+	});
+	con.query(tables.chats, function (err) {
+		if (err) throw err;
+		console.log("chats table created");
 	});
 	con.query("DROP FUNCTION IF EXISTS DIST;", function (err) {
 		if (err) throw err;

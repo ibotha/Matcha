@@ -94,9 +94,8 @@ p
 
 .profile-pic-container
 {
-	margin: auto;
 	width: 100%;
-	margin: 0 !important;
+	margin: 0  0 20px 0!important;
 	padding-top: 100% !important;
 	border-radius: 50% !important;
 	overflow: hidden;

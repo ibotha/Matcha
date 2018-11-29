@@ -1,21 +1,47 @@
 <div class="container-fluid" id="home">
+<% if (locals.reciever) { %>
 	<div id="messages">
-		<div class="other floating">i feel like modern day "social justice warriors" are just trying as hard as they can to play Offended Olympics (competing to see who is the most offended) this is so bad to the point that they will be offended for other people!! there is so many bad things in this world, and out of all you care that white people exist and that being fat is bad. Any sane person would say that you are born male or female, but not people on tumblr. To them you can be born a PLANT! THIS NEEDS TO STOP!<br>
-		EDIT 1: its also unbelievably funny that social justice warriors hate white people, like, isn't raicism what you are trying to fight. i swear to god a straight white male who is below 200 pounds could make a social justice warrior cry on sight. Only thing that will please them is a<br>
-		Obese Triple Transgender and double trans-Colored muslim demidisabledplantfurrykin who cut off 2 limbs because thats their gender.<br>
-		EDIT 2: shouldn't they just be saying person instead of black person or white person to truly fulfill their goal.</div>
-		<div class="local floating">Talk to someone who actually cares about social justice and not just about getting attention on tumblr because these twits give it a bad name</div>
+		<% messages.forEach( function (message) { %>
+			<div class="<%= message.reciever == session.user.id ? "other" : "local" %> floating"><%= message.message %></div>
+		<% }) %>
 	</div>
+	<h2 style="pointer-events: none; position: fixed; top: 0; text-align: center; width: 100%; z-index: 1000;"> <%= reciever.first_name %> </h2>
 	<form class="floating" action="" id="chat">
 		<input class="form-control" id="m" autocomplete="off"/>
 		<input type="button" class="btn" value="Send" id="submit">
 	</form>
 	<script>
+		var messagebox = document.getElementById('messages');
 		$(document).on('keypress', 'input,select', function (e) {
 				if (e.which == 13) {
 					e.preventDefault();
 					document.getElementById("submit").click();
 				}
 			});
+		
+		
+		socket.emit('init', <%= chat %>);
+		messagebox.scrollTop = messagebox.scrollHeight;
+		socket.on('getMsg', function (cont) {
+			console.log(cont.reciever);
+			messagebox.innerHTML += "<div class='" + ((cont.reciever == <%= session.user.id %>) ? "other" : "local") + " floating'>" + cont.msg + "</div>";
+			messagebox.scrollTop = messagebox.scrollHeight;
+		});
+
+		$("#submit").click(function () {
+			socket.emit('sendMsg', {msg: $("#m").val(), reciever: <%= reciever.id %>, chat: <%= chat %>});
+			$("#m").val('');
+			return false;
+		});
 	</script>
+<% } else { %>
+	<% console.log(chats) %>
+	<% chats.forEach( function (chat) { %>
+	<a href=<%= "chat?reciever=" + chat.id + "" %>>
+		<div class="btn floating" style="text-align: center; margin: 80px; width: 90% !important;">
+			<%= chat.first_name + " " + chat.last_name %>
+		</div>
+	</a>
+	<% }) %>
+<% } %>
 </div>

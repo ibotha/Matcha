@@ -88,22 +88,9 @@ app.post('/addpicture', pages.addpicture);
 app.get('*', function(req, res) {res.render('error', {url: req.url})});
 app.post('*', function(req, res) {res.render('error', {url: req.url})});
 
-io.on('connection', function(socket)
-{
-	socket.join('chat');
-	console.log('a user connected');
-	socket.on('sendMsg', function (msg) {
-		io.to('chat').emit('getMsg', msg);
-	});
+exports.io = io;
 
-	socket.on('init', function (uid) {
-		console.log(uid);
-	});
-
-	socket.on('disconnect', function(){
-		console.log('user disconnected');
-	});
-});
+io.on('connection', pages.socket);
 
 http.listen(3000, function (){
 	console.log('Server started on port 3000...');

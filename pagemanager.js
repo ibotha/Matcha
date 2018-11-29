@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 const fs = require('fs');
 const nope = require('./nope.js');
+const app = require('./app.js');
 
 var transporter = nodemailer.createTransport(
 	{
@@ -359,15 +360,71 @@ exports.homePage = function(req, res) {
 }
 
 exports.chatPage = function(req, res){
-	if (req.session.user)
-		res.render('index', {
-			title: 'Chat',
-			session: req.session
-		});
+	if (!req.session.user)
+		res.redirect('./');
+	if (req.query.reciever)
+	{
+		if (req.query.reciever == req.session.user)
+		{
+			res.redirect('./');
+		}
+		else
+		{
+			database.con.query("SELECT id, first_name, last_name, fame FROM `users` WHERE id = " + database.escape(req.query.reciever) + ";", function (err, result) {
+				if (err) throw err;
+				if (result.length == 0)
+				{
+					res.redirect("./chat");
+				}
+				else
+				{
+					var content = {
+						title: 'Chat',
+						session: req.session,
+						reciever: result[0],
+						sender: { id: req.session.user.id, first_name: req.session.user.first_name, last_name: req.session.user.last_name,}};
+					database.con.query("SELECT * FROM `chats` WHERE (`user1` = "+database.escape(result[0].id)+" AND `user2` = "+database.escape(req.session.user.id)+") OR (`user2` = "+database.escape(result[0].id)+" AND `user1` = "+database.escape(req.session.user.id)+")", function (err, result) {
+						if (err) throw err;
+						if (result.length == 0)
+						{
+							database.con.query("INSERT INTO `chats` (`user1`, `user2`) VALUES ("+database.escape(content.sender.id)+", "+database.escape(content.reciever.id)+")", function(err) {
+								if (err) throw err;
+								database.con.query("UPDATE `users` SET `fame` = "+database.escape(content.reciever.fame + 1)+" WHERE `users`.`id` = "+database.escape(content.reciever.id)+";", function (err) {
+									if (err) throw err;
+									res.redirect(req.url);
+								});
+							});
+						}
+						else
+						{
+							content.chat = result[0].id;
+							database.con.query("SELECT * FROM `messages` WHERE `chatid` = "+database.escape(content.chat)+" ORDER BY `id`", function(err, result) {
+								if (err) throw err;
+								content.messages = result;
+								res.render('index', content);
+							});
+						}
+					});
+				}
+			});
+		}
+	}
 	else
-		res.render('index', {
-			title: 'Chat',
+	{
+		database.con.query("SELECT users.id, users.first_name, users.last_name FROM chats INNER JOIN users ON users.id=chats.user1 WHERE user2 = "+database.escape(req.session.user.id)+";", function (err, result1) {
+			if (err) throw err;
+			database.con.query("SELECT users.id, users.first_name, users.last_name FROM chats INNER JOIN users ON users.id=chats.user2 WHERE user1 = "+database.escape(req.session.user.id)+";", function (err, result2) {
+				if (err) throw err;
+				var content = {
+					title: 'Chat',
+					session: req.session,
+					chats: result1.concat(result2)
+				};
+			res.render('index', content);
+			});
 		});
+
+	}
 }
 
 exports.logout = function(req, res){
@@ -561,4 +618,21 @@ exports.addpicture = function (req, res){
 		});
 	}
 	else if (++done == 4) {res.redirect("./profile?user=" + req.session.user.id);}
+}
+
+exports.socket = function(socket)
+{
+	console.log('a user connected');
+	socket.on('sendMsg', function (cont) {
+		database.con.query("INSERT INTO `messages` (`reciever`, `message`, `chatid`) VALUES ("+database.escape(cont.reciever)+", "+database.escape(cont.msg)+", "+database.escape(cont.chat)+")");
+		app.io.to(cont.chat).emit('getMsg', {msg: cont.msg, reciever: cont.reciever});
+	});
+
+	socket.on('init', function (chat) {
+		socket.join(chat);
+	});
+
+	socket.on('disconnect', function(){
+		console.log('user disconnected');
+	});
 }

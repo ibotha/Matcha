@@ -7,6 +7,13 @@
 		<link rel="stylesheet" type="text/css" media="screen" href="main.css" />
 		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
 		<script src="https://code.jquery.com/jquery-3.1.1.js" integrity="sha256-16cdPddA6VdVInumRGo6IbivbERE8p7CQR3HzTBuELA=" crossorigin="anonymous"></script>
+
+		<% if (locals.session) {%>
+		<script src="/socket.io/socket.io.js"></script>
+		<script>
+			var socket = io();
+		</script>
+		<% } %>
 	</head>
 	<nav class="navtop navbar navbar-expand-lg navbar-light">
 		<a class="navbar-brand" href="./">Matcha</a>
@@ -21,11 +28,11 @@
 				<% var ref = 'href="./profile?user=' + session.user.id + '"' %>
 				<li <%- title != 'Profile' ? 'class="nav-item"' : 'class="nav-item active"' %>><a class="nav-link" <%- ref %>><%= session.user.first_name %></a></li>
 				<li class="nav-item"><a class="nav-link" href="./logout">Logout</a></li>
+				<li <%- title != 'Chat' ? 'class="nav-item"' : 'class="nav-item active"' %>><a class="nav-link" href="./chat">Chat</a></li>
 			<% } else { %>
 				<li <%- title != 'Login' ? 'class="nav-item"' : 'class="nav-item active"' %>><a class="nav-link" href="./login">Log In</a></li>
 				<li <%- title != 'Signup' ? 'class="nav-item"' : 'class="nav-item active"' %>><a class="nav-link" href="./signup">Sign Up</a></li>
 			<% } %>
-			<li <%- title != 'Chat' ? 'class="nav-item"' : 'class="nav-item active"' %>><a class="nav-link" href="./chat">Chat</a></li>
 		</ul>
 		</div>
 	</nav>

@@ -7,10 +7,10 @@
 					<div class="col-lg-3">
 						<div class="profile-pic-container floating" id=<%- "'pp-container" + user.id + "'" %>></div>
 						<script>
-							document.getElementById(<%- "'pp-container" + user.id + "'" %>).style.backgroundImage = <%- '\'URL("' + (user.profilepic ? user.profilepic : 'https://png.pngtree.com/svg/20161013/dpi_user_default_avatar_116868.png')+'")\'' %>;
+						document.getElementById(<%- "'pp-container" + user.id + "'" %>).style.backgroundImage = <%- '\'URL("' + (user.profilepic ? user.profilepic : 'https://png.pngtree.com/svg/20161013/dpi_user_default_avatar_116868.png')+'")\'' %>;
 						</script>
 					</div>
-					<div class="col-lg-3 floating" style="background-color: rgb(255, 255, 255); margin-bottom: auto">
+					<div class="col-lg-3 floating" style="background-color: rgb(255, 255, 255); margin-bottom: 20px">
 						<h3><%= user.first_name + " " + user.last_name %></h3>
 						<span>Gender: <%= genset[user.gender] %></span><br>
 						<span>Sexuality: <%= prefset[user.preference] %></span><br>
@@ -23,8 +23,9 @@
 							<span>Score: <%= parseFloat(user.score.toFixed(2)) %></span><br>
 						<% } %>
 					</div>
+					<div class="divider"></div>
 					<div class="col-lg-1"></div>
-					<div class="col-lg-3 floating" style="background-color: rgb(255, 255, 255); margin-bottom: auto">
+					<div class="col-lg-3 floating" style="background-color: rgb(255, 255, 255); margin-bottom: 20px">
 						<h3>Interests</h3>
 						<ul>
 							
@@ -35,9 +36,14 @@
 							<% }); %>
 						</ul>
 					</div>
+					<div class="divider"></div>
 					<div class="col-lg-2">
 						<div class="container">
 							<a class="btn floating" href=<%-"'profile?user=" + user.id + "'" %>>Profile</a>
+							<% if (locals.session) { %>
+								<div class="dropdown-divider"></div>
+								<a class="btn floating" href=<%-"'chat?reciever=" + user.id + "'" %>>Chat</a>
+							<% } %>
 						</div>
 					</div>
 				<div class="divider"></div>
