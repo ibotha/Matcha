@@ -11,8 +11,7 @@ var transporter = nodemailer.createTransport(
 		auth: nope.auth,
 		logger: false,
 		debug: false
-	},
-	{
+	},{
 		from: 'Matcha <ibothawebadmi@gmail.com>',
 		headers: {
 		}
@@ -245,76 +244,83 @@ exports.profilePage = function(req, res){
 	if (req.query.user)
 		database.con.query("SELECT * FROM `users` WHERE id = " + database.escape(req.query.user) + "LIMIT 1", function (err, result, fields) {
 			if (err) throw err;
-				var user = result[0];
-			if (!user || !user.valid)
-				res.redirect('./');
-			if (user)
+			if (result.length == 0)
 			{
-				user.interests = JSON.parse(user.interests);
-				database.con.query("SELECT * FROM `catagories`", function (err, result, fields) {
-					if (err) throw err;
-					var cats = [];
-					var done = 0;
-					var intlist = [];
-					result.forEach(cat => {
-						database.con.query("SELECT * FROM `interests` WHERE `catagory` = '" + cat.id + "' ORDER BY `name` ASC;", function (err, ints, fields) {
-							if (err) throw err;
-							cats.push({name: cat.name, interests: ints});
-							if (done == (result.length - 1 + user.interests.length))
-							{
-								user.interests = intlist;
-								if (req.session.user)
-									res.render('index', {
-										title: 'Profile',
-										session: req.session,
-										user: user,
-										cats: cats,
-										errors: temperr
-									});
-								else
-									res.render('index', {
-										title: 'Profile',
-										user: user,
-										errors: temperr
-									});
-							}
-							else ++done;
-						});
-					});
-					user.interests.forEach(interest => {
-						database.con.query("SELECT * FROM `interests` WHERE `id` = '" + interest + "' LIMIT 1;", function (err, resu, fields) {
-							if (err) throw err;
-							intlist.push(resu[0].name);
-							if (done == (result.length - 1 + user.interests.length))
-							{
-								user.interests = intlist;
-								if (req.session.user)
-									res.render('index', {
-										title: 'Profile',
-										session: req.session,
-										user: user,
-										cats: cats,
-										errors: temperr
-									});
-								else
-									res.render('index', {
-										title: 'Profile',
-										user: user,
-										errors: temperr
-									});
-							}
-							else ++done;
-						});
-					});			
-				});
+				res.redirect("./");
 			}
-			else res.redirect('./');
+			else
+			{
+				var user = result[0];
+				if (!user || !user.valid)
+					res.redirect('./');
+				if (user)
+				{
+					user.interests = JSON.parse(user.interests);
+					database.con.query("SELECT * FROM `catagories`", function (err, result, fields) {
+						if (err) throw err;
+						var cats = [];
+						var done = 0;
+						var intlist = [];
+						result.forEach(cat => {
+							database.con.query("SELECT * FROM `interests` WHERE `catagory` = '" + cat.id + "' ORDER BY `name` ASC;", function (err, ints, fields) {
+								if (err) throw err;
+								cats.push({name: cat.name, interests: ints});
+								if (done == (result.length - 1 + user.interests.length))
+								{
+									user.interests = intlist;
+									if (req.session.user)
+										res.render('index', {
+											title: 'Profile',
+											session: req.session,
+											user: user,
+											cats: cats,
+											errors: temperr
+										});
+									else
+										res.render('index', {
+											title: 'Profile',
+											user: user,
+											errors: temperr
+										});
+								}
+								else ++done;
+							});
+						});
+						user.interests.forEach(interest => {
+							database.con.query("SELECT * FROM `interests` WHERE `id` = '" + interest + "' LIMIT 1;", function (err, resu, fields) {
+								if (err) throw err;
+								intlist.push(resu[0].name);
+								if (done == (result.length - 1 + user.interests.length))
+								{
+									user.interests = intlist;
+									if (req.session.user)
+										res.render('index', {
+											title: 'Profile',
+											session: req.session,
+											user: user,
+											cats: cats,
+											errors: temperr
+										});
+									else
+										res.render('index', {
+											title: 'Profile',
+											user: user,
+											errors: temperr
+										});
+								}
+								else ++done;
+							});
+						});			
+					});
+				}
+				else res.redirect('./');
+			}
 		});
 		else res.redirect('./');
 }
 
 exports.homePage = function(req, res) {
-	if (req.session.user)
+	if (req.session.user != undefined)
 	{
 		var dist = ", DIST("+database.escape(req.session.user.lat)+", "+database.escape(req.session.user.lon)+", lat, lon) AS dist";
 		var score = ", SCORE("+database.escape(JSON.stringify(req.session.user.interests))+", interests, '30' + fame - ABS("+database.escape(req.session.user.age)+" - age) / ((age - 16) / 4) - DIST("+database.escape(req.session.user.lat)+", "+database.escape(req.session.user.lon)+", lat, lon) / 4) AS score";
@@ -342,18 +348,31 @@ exports.homePage = function(req, res) {
 		if (err) throw err;
 		database.con.query("SELECT * FROM `interests`;", function (err, interests) {
 			if (err) throw err;
-			if (req.session.user)
-				res.render('index', {
-					title: 'Home',
-					session: req.session,
-					users: result,
-					interests: interests
+			database.con.query("SELECT blockie FROM `blocks` WHERE blocker = " + database.escape(req.session.user ? req.session.user.id : 0) + ";", function (err, blocks) {
+				if (err) throw err;
+				var users = [];
+				result.forEach(function (val) {
+					var add = true;
+					blocks.forEach(function (block) {
+						if (block.blockie == val.id)
+							add = false;
+					});
+					if (add)
+						users.push(val);
 				});
-			else
-				res.render('index', {
-					title: 'Home',
-					users: result,
-					interests: interests
+				if (req.session.user)
+					res.render('index', {
+						title: 'Home',
+						session: req.session,
+						users: users,
+						interests: interests
+					});
+				else
+					res.render('index', {
+						title: 'Home',
+						users: result,
+						interests: interests
+					});
 				});
 		});
 	});
@@ -415,12 +434,31 @@ exports.chatPage = function(req, res){
 			if (err) throw err;
 			database.con.query("SELECT users.id, users.first_name, users.last_name FROM chats INNER JOIN users ON users.id=chats.user2 WHERE user1 = "+database.escape(req.session.user.id)+";", function (err, result2) {
 				if (err) throw err;
-				var content = {
-					title: 'Chat',
-					session: req.session,
-					chats: result1.concat(result2)
-				};
-			res.render('index', content);
+				database.con.query("SELECT blockie FROM `blocks` WHERE blocker = " + database.escape(req.session.user ? req.session.user.id : 0) + ";", function (err, blocks) {
+					if (err) throw err;
+					var result = result1.concat(result2);
+					var users = [];
+					result.forEach(function (val) {
+						var add = true;
+						blocks.forEach(function (block) {
+							if (block.blockie == val.id)
+								add = false;
+						});
+						if (add)
+							users.push(val);
+						else 
+						{
+							val.blocked = true;
+							users.push(val);
+						}
+					});
+					var content = {
+						title: 'Chat',
+						session: req.session,
+						chats: users
+						};
+						res.render('index', content);
+					});
 			});
 		});
 
@@ -620,9 +658,7 @@ exports.addpicture = function (req, res){
 	else if (++done == 4) {res.redirect("./profile?user=" + req.session.user.id);}
 }
 
-exports.socket = function(socket)
-{
-	console.log('a user connected');
+exports.socket = function(socket) {
 	socket.on('sendMsg', function (cont) {
 		database.con.query("INSERT INTO `messages` (`reciever`, `message`, `chatid`) VALUES ("+database.escape(cont.reciever)+", "+database.escape(cont.msg)+", "+database.escape(cont.chat)+")");
 		app.io.to(cont.chat).emit('getMsg', {msg: cont.msg, reciever: cont.reciever});
@@ -633,6 +669,20 @@ exports.socket = function(socket)
 	});
 
 	socket.on('disconnect', function(){
-		console.log('user disconnected');
+	});
+}
+
+exports.block = function(req, res) {
+	database.con.query("SELECT * FROM `blocks` WHERE blocker = " + database.escape(req.query.blocker) + " AND blockie = " + database.escape(req.query.blockie) + ";", function (err, result) {
+		if (err) throw err;
+		if (result.length == 0)
+		{
+			database.con.query("INSERT INTO `blocks` (`blocker`, `blockie`) VALUES(" + database.escape(req.query.blocker) + ", " + database.escape(req.query.blockie) + ");", function (err, result) {
+				if (err) throw err;
+			});
+			res.send("done!");
+		}
+		else
+			res.send("Already exsists");
 	});
 }

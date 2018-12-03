@@ -78,6 +78,8 @@ app.get('/removeinterest', pages.removeinterest);
 
 app.get('/verify', pages.verify);
 
+app.get('/block', pages.block);
+
 app.post('/change', pages.change);
 
 app.post('/addprofilepicture', pages.addprofilepicture);

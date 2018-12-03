@@ -24,7 +24,7 @@
 		messagebox.scrollTop = messagebox.scrollHeight;
 		socket.on('getMsg', function (cont) {
 			console.log(cont.reciever);
-			messagebox.innerHTML += "<div class='" + ((cont.reciever == <%= session.user.id %>) ? "other" : "local") + " floating'>" + cont.msg + "</div>";
+			messagebox.innerHTML += "<div class='" + ((cont.reciever == <%= session.user.id %>) ? "other" : "local") + " floating'>" + cont.msg.replace(/</g, "&lt") + "</div>";
 			messagebox.scrollTop = messagebox.scrollHeight;
 		});
 
@@ -35,11 +35,36 @@
 		});
 	</script>
 <% } else { %>
-	<% console.log(chats) %>
+	<script>
+		function block(blocker, blockie)
+		{
+			var xhttp = new XMLHttpRequest();
+
+			xhttp.onreadystatechange = function () {
+				if (this.readyState == 4)
+				{
+					console.log(this.responseText);
+				}
+			};
+
+			xhttp.open("GET", "./block" + "?blocker=" + blocker + "&blockie=" + blockie);
+			xhttp.send();
+
+		}
+	</script>
 	<% chats.forEach( function (chat) { %>
 	<a href=<%= "chat?reciever=" + chat.id + "" %>>
-		<div class="btn floating" style="text-align: center; margin: 80px; width: 90% !important;">
+		<div class="btn floating" style="text-align: center; margin: 80px 1px 80px 4%; width: 80% !important;">
 			<%= chat.first_name + " " + chat.last_name %>
+		</div>
+	</a>
+	<a onclick="block(<%= session.user.id %>, <%= chat.id %>)">
+		<div class="btn floating" style="background-color: black !important; text-align: center; margin: 80px 4% 80px 1px; width: 10% !important;">
+			<% if chat.blocked { %>
+				block
+			<% } else { %>
+				unblock
+			<% } %>
 		</div>
 	</a>
 	<% }) %>

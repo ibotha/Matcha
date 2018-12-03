@@ -51,6 +51,10 @@ var tables = {
 	"user2 int NOT NULL," +
 	"PRIMARY KEY (id)" +
 	")",
+	blocks: "CREATE TABLE IF NOT EXISTS `matcha`.`blocks` (" +
+	"blocker int NOT NULL UNIQUE," +
+	"blockie int NOT NULL UNIQUE" +
+	")",
 	distfunc:
 	'CREATE FUNCTION DIST(lat1 DOUBLE, lon1 DOUBLE, lat2 DOUBLE, lon2 DOUBLE) RETURNS DOUBLE ' +
 	'DETERMINISTIC ' +
@@ -150,6 +154,10 @@ function createTables(err) {
 	con.query(tables.chats, function (err) {
 		if (err) throw err;
 		console.log("chats table created");
+	});
+	con.query(tables.blocks, function (err) {
+		if (err) throw err;
+		console.log("blocks table created");
 	});
 	con.query("DROP FUNCTION IF EXISTS DIST;", function (err) {
 		if (err) throw err;

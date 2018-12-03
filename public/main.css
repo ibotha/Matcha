@@ -77,6 +77,18 @@ nav
 	color: white !important;
 }
 
+.btn-2
+{
+	display: inline-block;
+	font-weight: 400;
+	white-space: nowrap;
+	vertical-align: middle;
+
+	background-color: black !important;
+	border-color: black !important;
+	color: white !important;
+}
+
 .btn:focus
 {
 	outline-color: crimson !important;
