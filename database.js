@@ -16,7 +16,7 @@ var tables = {
 	"bio varchar(2000),"+
 	"fame int NOT NULL DEFAULT 0,"+
 	"valid int NOT NULL DEFAULT 0,"+
-	"age int NOT NULL,"+
+	"birthdate DATE NOT NULL,"+
 	"lat double,"+
 	"lon double,"+
 	"profilepic blob(4294967295),"+
@@ -46,14 +46,15 @@ var tables = {
 	"PRIMARY KEY (id)" +
 	")",
 	chats: "CREATE TABLE IF NOT EXISTS `matcha`.`chats` (" +
-	"id int UNIQUE NOT NULL AUTO_INCREMENT," +
+	"id int NOT NULL AUTO_INCREMENT," +
 	"user1 int NOT NULL," +
 	"user2 int NOT NULL," +
+	"active bool NOT NULL DEFAULT 0," +
 	"PRIMARY KEY (id)" +
 	")",
 	blocks: "CREATE TABLE IF NOT EXISTS `matcha`.`blocks` (" +
-	"blocker int NOT NULL UNIQUE," +
-	"blockie int NOT NULL UNIQUE" +
+	"blocker int NOT NULL," +
+	"blockie int NOT NULL" +
 	")",
 	distfunc:
 	'CREATE FUNCTION DIST(lat1 DOUBLE, lon1 DOUBLE, lat2 DOUBLE, lon2 DOUBLE) RETURNS DOUBLE ' +

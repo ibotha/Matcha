@@ -17,10 +17,10 @@
 						<span>Age: <%= user.age %></span><br>
 						<span>Fame: <%= user.fame %></span><br>
 						<% if (user.dist !== undefined) { %>
-							<span>Dist: <%= parseFloat(user.dist.toFixed(2)) %>km</span><br>
+							<span>Dist: <%= user.dist.toFixed(2) %>km</span><br>
 						<% } %>
 						<% if (user.score !== undefined) { %>
-							<span>Score: <%= parseFloat(user.score.toFixed(2)) %></span><br>
+							<span>Score: <%= user.score %></span><br>
 						<% } %>
 					</div>
 					<div class="divider"></div>
@@ -28,7 +28,6 @@
 					<div class="col-lg-3 floating" style="background-color: rgb(255, 255, 255); margin-bottom: 20px">
 						<h3>Interests</h3>
 						<ul>
-							
 							<%JSON.parse(user.interests).forEach(interest => { %>
 								<li>
 									<%= interests.find(function (element) {return element.id == interest}).name %>

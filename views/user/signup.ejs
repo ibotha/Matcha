@@ -12,7 +12,8 @@
 			<input type="text" class="form-control" id="last_name" name="last_name" placeholder="Last Name" <%- locals.current ? ('value=' + current.last_name) : 'value=""'; %> >
 		</div>
 		<div class="form-group">
-			<input type="number" min="0" class="form-control" id="age" name="age" placeholder="Age" <%- locals.current ? ('value=' + current.age) : 'value=""'; %> >
+			<label>Birthdate</label>
+			<input type="date" min="0" class="form-control" id="age" name="age" placeholder="birthdate" <%- locals.current ? ('value=' + current.age) : 'value=""'; %> >
 		</div>
 		<div class="form-group">
 			<input type="password" class="form-control" id="pwd" name="password" placeholder="Password">
@@ -34,6 +35,9 @@
 					<option <%- (locals.current && current.preference == 'Heterosexual') ? 'selected="selected"' : "" %>>Heterosexual</option>
 					<option <%- (locals.current && current.preference == 'Homosexual') ? 'selected="selected"' : "" %>>Homosexual</option>
 			</select>
+		</div>
+		<div class="form-group">
+			You must be 18 to use this site.
 		</div>
 		<button type="submit" class="btn btn-primary">Submit</button>
 		<a href="./login">Or Log In</a>

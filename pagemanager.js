@@ -4,6 +4,7 @@ const nodemailer = require('nodemailer');
 const fs = require('fs');
 const nope = require('./nope.js');
 const app = require('./app.js');
+const glob = require('glob');
 
 var transporter = nodemailer.createTransport(
 	{
@@ -18,7 +19,7 @@ var transporter = nodemailer.createTransport(
 	}
 );
 
-var passerr = null;
+var onlineusers = [];
 
 function sendVerif(user, type) {
 	var verif = change(Math.random().toString());
@@ -74,14 +75,17 @@ function change(str)
 	return ret;
 }
 
-exports.loginForm = function (req, res) {
-	req.checkBody('email', 'Not Valid Email Format').isEmail();
-	req.checkBody('email', 'Email is Required').notEmpty();
-	req.checkBody('lat', 'Location err').notEmpty();
-	req.checkBody('lon', 'Location err').notEmpty();
+function calculateAge(birthday) {
+	var day = new Date(birthday);
+	var ageDifMs = Date.now() - day.getTime();
+	var ageDate = new Date(ageDifMs);
+	return Math.abs(ageDate.getUTCFullYear() - 1970);
+}
 
-	var errors = null;
-	passerr = null;
+exports.loginForm = function (req, res) {
+	req.session.errors = [];
+	if (!req.body.email.match(/^.*@.*\..*$/gm)) req.session.errors.push('Not Valid Email Format');
+	if (req.body.lon.length==0 || req.body.lat.length==0) req.session.errors.push('locerr');
 
 	if (req.body.forgot == 'true')
 	{
@@ -91,11 +95,11 @@ exports.loginForm = function (req, res) {
 			{
 				sendVerif(result[0], 'forgot');
 			}
-			else passerr = [{ msg: "Not an exsisting email"}];
+			else req.session.errors.push("Not an exsisting email");
 
 			res.render('index', {
 				title: 'Login',
-				errors: errors ? errors.concat(passerr) : passerr,
+				errors: req.session.errors,
 				current: {
 					email: req.body.email
 				}
@@ -109,10 +113,10 @@ exports.loginForm = function (req, res) {
 			{
 				sendVerif(result[0], 'verif');
 			}
-			else passerr = [{ msg: "Not an exsisting email or already validated"}];
+			else req.session.errors.push("Not an exsisting email or already validated");
 			res.render('index', {
 				title: 'Login',
-				errors: errors ? errors.concat(passerr) : passerr,
+				errors: req.session.errors,
 				current: {
 					email: req.body.email
 				}
@@ -121,27 +125,25 @@ exports.loginForm = function (req, res) {
 	}
 	else
 	{
-		req.checkBody('password', 'Password is Required').notEmpty();
+		if (req.body.password.length == 0) req.session.errors.push("Password is Required");
 
-		var errors = req.validationErrors();
-
-		if (errors) {
+		if (req.session.errors.length > 0) {
 			res.render('index', {
 				title: 'Login',
-				errors: errors ? errors.concat(passerr) : passerr,
+				errors: req.session.errors,
 				current: {
 					email: req.body.email
 				}
 			});
 		} else {
-			database.con.query("SELECT id, email, password, first_name, last_name, lat, lon, interests, preference, gender, fame, valid, age FROM `users` WHERE email = " + database.escape(req.body.email) + " AND `valid` = '1' LIMIT 1", function (err, result, fields) {
+			database.con.query("SELECT id, email, password, first_name, last_name, lat, lon, interests, preference, gender, fame, valid, birthdate FROM `users` WHERE email = " + database.escape(req.body.email) + " AND `valid` = '1' LIMIT 1", function (err, result, fields) {
 				if (err) throw err;
 				if (!result.length)
 				{
-					passerr = [{msg: 'Invalid Login'}];
+					req.session.errors.push('Invalid Login');
 					res.render('index', {
 						title: 'Login',
-						errors: passerr,
+						errors: req.session.errors,
 						current: {
 							email: req.body.email
 						}
@@ -153,15 +155,16 @@ exports.loginForm = function (req, res) {
 						function (err)
 						{
 							if (err) throw err;
+							result[0].age = calculateAge(result[0].birthdate)
 							result[0].interests = JSON.parse(result[0].interests);
-											req.session.user = result[0];
-											res.redirect('./');
+							req.session.user = result[0];
+							res.redirect('./');
 						});
 					} else {
-						passerr = [{msg: 'Invalid Login'}];
+						req.session.errors.push('Invalid Login');
 						res.render('index', {
 							title: 'Login',
-							errors: errors ? errors.concat(passerr) : passerr,
+							errors: req.session.errors,
 							current: {
 								email: req.body.email
 							}
@@ -174,19 +177,23 @@ exports.loginForm = function (req, res) {
 }
 
 exports.signupForm = function (req, res) {
-	req.checkBody('email', 'Not Valid Email Format').isEmail();
-	req.checkBody('email', 'Email is Required').notEmpty();
-	req.checkBody('email', 'Email Too Long').isLength({max: 100});
-	req.checkBody('password', 'Password is Required').notEmpty();
-	req.checkBody('password', 'Password Must Be at Least 8 Characters Long and Contain at Least: 1 Special, Capital, Numeric and Lower Case Character').matches(/^(?=.*\d)(?=.*[^a-zA-Z\d])(?=.*[a-z])(?=.*[A-Z]).{8,}$/);
-	req.checkBody('confirm', 'Passwords Must Match').equals(req.body.password);
-	req.checkBody('first_name', 'First Name is Required').notEmpty();
-	req.checkBody('first_name', 'First Name Too Long').isLength({max: 20});
-	req.checkBody('last_name', 'Last Name is Required').notEmpty();
-	req.checkBody('last_name', 'Last Name Too Long').isLength({max: 20});
-	req.checkBody('age', 'Age is Required').notEmpty();
+	req.session.errors = [];
+	if (!req.body.email.match(/^.*@.*\..*$/gm)) req.session.errors.push('Not Valid Email Format');
+	if (req.body.email.length==0) req.session.errors.push('Email is required');
+	if (req.body.email.length>100) req.session.errors.push('Email too long');
+	if (!req.body.password.match(/^(?=.*\d)(?=.*[^a-zA-Z\d])(?=.*[a-z])(?=.*[A-Z]).{8,}$/)) req.session.errors.push('Password Must Be at Least 8 Characters Long and Contain at Least: 1 Special, Capital, Numeric and Lower Case Character');
+	if (req.body.password.length==0) req.session.errors.push('Password is required');
+	if (req.body.confirm != req.body.password) req.session.errors.push('Passwords Don\'t match');
+	if (req.body.first_name.length==0) req.session.errors.push('First Name is required');
+	if (req.body.first_name.length > 30) req.session.errors.push('First Name is too long');
+	if (req.body.last_name.length==0) req.session.errors.push('Last Name is required');
+	if (req.body.last_name.length > 30) req.session.errors.push('Last Name is too long');
+	if (req.body.age.length==0) req.session.errors.push('Birthdate is Required');
+	if (!req.body.age.match(/^[0-9]{4}\-[0-9]{2}\-[0-9]{2}$/)) req.session.errors.push('Invalid Birthdate');
+	var birthdate = calculateAge(req.body.age);
+	if (birthdate < 18) req.session.errors.push('You are too young');
 
-	var errors = req.validationErrors();
+ 	var errors = req.session.errors;
 	var current = {
 		email: req.body.email ? req.body.email : "",
 		first_name: req.body.first_name ? req.body.first_name : "",
@@ -195,7 +202,7 @@ exports.signupForm = function (req, res) {
 		gender: req.body.gender ? req.body.gender : "",
 		preference: req.body.preference ? req.body.preference : ""
 	};
-	if (errors) {
+	if (errors.length > 0) {
 		res.render('index', {
 			title: 'Signup',
 			errors: errors,
@@ -207,7 +214,7 @@ exports.signupForm = function (req, res) {
 			if (err) throw err;
 			if (!result.length)
 			{
-				database.con.query("INSERT INTO `users` (`first_name`, `last_name`, `age`, `email`, `password`, `verif`, `preference`, `gender`) VALUES ("+
+				database.con.query("INSERT INTO `users` (`first_name`, `last_name`, `birthdate`, `email`, `password`, `verif`, `preference`, `gender`) VALUES ("+
 					database.escape(req.body.first_name) + ","+
 					database.escape(req.body.last_name) + ","+
 					database.escape(req.body.age) + ","+
@@ -234,13 +241,10 @@ exports.signupForm = function (req, res) {
 				});
 			}
 		});
-	}
+	} 
 }
 
 exports.profilePage = function(req, res){
-	var temperr = passerr;
-	passerr = null;
-	(temperr);
 	if (req.query.user)
 		database.con.query("SELECT * FROM `users` WHERE id = " + database.escape(req.query.user) + "LIMIT 1", function (err, result, fields) {
 			if (err) throw err;
@@ -251,6 +255,7 @@ exports.profilePage = function(req, res){
 			else
 			{
 				var user = result[0];
+				user.age = calculateAge(user.birthdate);
 				if (!user || !user.valid)
 					res.redirect('./');
 				if (user)
@@ -274,13 +279,11 @@ exports.profilePage = function(req, res){
 											session: req.session,
 											user: user,
 											cats: cats,
-											errors: temperr
 										});
 									else
 										res.render('index', {
 											title: 'Profile',
 											user: user,
-											errors: temperr
 										});
 								}
 								else ++done;
@@ -299,13 +302,11 @@ exports.profilePage = function(req, res){
 											session: req.session,
 											user: user,
 											cats: cats,
-											errors: temperr
 										});
 									else
 										res.render('index', {
 											title: 'Profile',
 											user: user,
-											errors: temperr
 										});
 								}
 								else ++done;
@@ -323,9 +324,8 @@ exports.homePage = function(req, res) {
 	if (req.session.user != undefined)
 	{
 		var dist = ", DIST("+database.escape(req.session.user.lat)+", "+database.escape(req.session.user.lon)+", lat, lon) AS dist";
-		var score = ", SCORE("+database.escape(JSON.stringify(req.session.user.interests))+", interests, '30' + fame - ABS("+database.escape(req.session.user.age)+" - age) / ((age - 16) / 4) - DIST("+database.escape(req.session.user.lat)+", "+database.escape(req.session.user.lon)+", lat, lon) / 4) AS score";
-		var agediff = ", ABS("+database.escape(req.session.user.age)+" - age) AS diff";
-		var prefsearch = ' AND SCORE('+database.escape(JSON.stringify(req.session.user.interests))+', interests, \'30\' + fame - ABS('+database.escape(req.session.user.age)+' - age) / ((age - 16) / 4) - DIST('+database.escape(req.session.user.lat)+', '+database.escape(req.session.user.lon)+', lat, lon) / 4) > 0 AND id <> ' + database.escape(req.session.user.id) + " AND";
+		var score = ", SCORE("+database.escape(JSON.stringify(req.session.user.interests))+", interests, '50' + fame - DIST("+database.escape(req.session.user.lat)+", "+database.escape(req.session.user.lon)+", lat, lon) / 4) AS score"
+		var prefsearch = ' AND id <> ' + database.escape(req.session.user.id) + " AND";
 		switch (req.session.user.preference)
 		{
 			case 0:
@@ -340,31 +340,22 @@ exports.homePage = function(req, res) {
 		}
 	}
 	else
-		var prefsearch = '', dist = '', agediff = '', score = '';
-	var statement = "SELECT id, first_name, last_name, pic1, profilepic, age"+agediff+", fame, bio, gender, preference, interests" + dist + score +
-	" FROM `users` WHERE valid = 1" + prefsearch +
+		var prefsearch = '', dist = '', score = '';
+	var statement = "SELECT id, first_name, last_name, pic1, profilepic, birthdate, fame, bio, gender, preference, interests" + dist + score +
+	", blocks.blocker, blocks.blockie FROM `users` LEFT JOIN blocks ON blocks.blocker=" + (req.session.user?database.escape(req.session.user.id):"0") + " AND blocks.blockie=users.id WHERE valid = 1 AND blocks.blockie IS NULL " + prefsearch +
 	" ORDER BY " + (score ? "score, " : "") + (dist ? "dist, " : "") + "fame DESC LIMIT 5;";
 	database.con.query(statement, function (err, result) {
 		if (err) throw err;
 		database.con.query("SELECT * FROM `interests`;", function (err, interests) {
+		result.forEach(user => {
+			user.age = calculateAge(user.birthdate);
+		});
 			if (err) throw err;
-			database.con.query("SELECT blockie FROM `blocks` WHERE blocker = " + database.escape(req.session.user ? req.session.user.id : 0) + ";", function (err, blocks) {
-				if (err) throw err;
-				var users = [];
-				result.forEach(function (val) {
-					var add = true;
-					blocks.forEach(function (block) {
-						if (block.blockie == val.id)
-							add = false;
-					});
-					if (add)
-						users.push(val);
-				});
 				if (req.session.user)
 					res.render('index', {
 						title: 'Home',
 						session: req.session,
-						users: users,
+						users: result,
 						interests: interests
 					});
 				else
@@ -373,95 +364,83 @@ exports.homePage = function(req, res) {
 						users: result,
 						interests: interests
 					});
-				});
 		});
 	});
 }
 
 exports.chatPage = function(req, res){
-	if (!req.session.user)
-		res.redirect('./');
-	if (req.query.reciever)
+	if (req.session.user == undefined)
 	{
-		if (req.query.reciever == req.session.user)
-		{
-			res.redirect('./');
-		}
-		else
-		{
-			database.con.query("SELECT id, first_name, last_name, fame FROM `users` WHERE id = " + database.escape(req.query.reciever) + ";", function (err, result) {
-				if (err) throw err;
-				if (result.length == 0)
-				{
-					res.redirect("./chat");
-				}
-				else
-				{
-					var content = {
-						title: 'Chat',
-						session: req.session,
-						reciever: result[0],
-						sender: { id: req.session.user.id, first_name: req.session.user.first_name, last_name: req.session.user.last_name,}};
-					database.con.query("SELECT * FROM `chats` WHERE (`user1` = "+database.escape(result[0].id)+" AND `user2` = "+database.escape(req.session.user.id)+") OR (`user2` = "+database.escape(result[0].id)+" AND `user1` = "+database.escape(req.session.user.id)+")", function (err, result) {
-						if (err) throw err;
-						if (result.length == 0)
-						{
-							database.con.query("INSERT INTO `chats` (`user1`, `user2`) VALUES ("+database.escape(content.sender.id)+", "+database.escape(content.reciever.id)+")", function(err) {
-								if (err) throw err;
-								database.con.query("UPDATE `users` SET `fame` = "+database.escape(content.reciever.fame + 1)+" WHERE `users`.`id` = "+database.escape(content.reciever.id)+";", function (err) {
-									if (err) throw err;
-									res.redirect(req.url);
-								});
-							});
-						}
-						else
-						{
-							content.chat = result[0].id;
-							database.con.query("SELECT * FROM `messages` WHERE `chatid` = "+database.escape(content.chat)+" ORDER BY `id`", function(err, result) {
-								if (err) throw err;
-								content.messages = result;
-								res.render('index', content);
-							});
-						}
-					});
-				}
-			});
-		}
+		res.redirect('./');
 	}
 	else
 	{
-		database.con.query("SELECT users.id, users.first_name, users.last_name FROM chats INNER JOIN users ON users.id=chats.user1 WHERE user2 = "+database.escape(req.session.user.id)+";", function (err, result1) {
-			if (err) throw err;
-			database.con.query("SELECT users.id, users.first_name, users.last_name FROM chats INNER JOIN users ON users.id=chats.user2 WHERE user1 = "+database.escape(req.session.user.id)+";", function (err, result2) {
-				if (err) throw err;
-				database.con.query("SELECT blockie FROM `blocks` WHERE blocker = " + database.escape(req.session.user ? req.session.user.id : 0) + ";", function (err, blocks) {
+		if (req.query.reciever)
+		{
+			if (req.query.reciever == req.session.user.id)
+			{
+				res.redirect('./');
+			}
+			else
+			{
+				database.con.query("SELECT id, first_name, last_name, fame FROM `users` WHERE id = " + database.escape(req.query.reciever) + ";", function (err, result) {
 					if (err) throw err;
-					var result = result1.concat(result2);
-					var users = [];
-					result.forEach(function (val) {
-						var add = true;
-						blocks.forEach(function (block) {
-							if (block.blockie == val.id)
-								add = false;
+					if (result.length == 0)
+					{
+						res.redirect("./chat");
+					}
+					else
+					{
+						var content = {
+							title: 'Chat',
+							session: req.session,
+							reciever: result[0],
+							sender: { id: req.session.user.id, first_name: req.session.user.first_name, last_name: req.session.user.last_name,}};
+						database.con.query("SELECT * FROM `chats` WHERE (`user1` = "+database.escape(result[0].id)+" AND `user2` = "+database.escape(req.session.user.id)+") OR (`user2` = "+database.escape(result[0].id)+" AND `user1` = "+database.escape(req.session.user.id)+")", function (err, result) {
+							if (err) throw err;
+							if (result.length == 0)
+							{
+								database.con.query("INSERT INTO `chats` (`user1`, `user2`) VALUES ("+database.escape(content.sender.id)+", "+database.escape(content.reciever.id)+")", function(err) {
+									if (err) throw err;
+									database.con.query("UPDATE `users` SET `fame` = "+database.escape(content.reciever.fame + 1)+" WHERE `users`.`id` = "+database.escape(content.reciever.id)+";", function (err) {
+										if (err) throw err;
+										res.redirect(req.url);
+									});
+								});
+							}
+							else
+							{
+								content.chat = result[0].id;
+								database.con.query("SELECT * FROM `messages` WHERE `chatid` = "+database.escape(content.chat)+" ORDER BY `id`", function(err, result) {
+									if (err) throw err;
+									content.messages = result;
+									res.render('index', content);
+								});
+							}
 						});
-						if (add)
-							users.push(val);
-						else 
-						{
-							val.blocked = true;
-							users.push(val);
-						}
-					});
-					var content = {
-						title: 'Chat',
-						session: req.session,
-						chats: users
-						};
-						res.render('index', content);
-					});
+					}
+				});
+			}
+		}
+		else
+		{
+			database.con.query("SELECT active, blocker, blockie, users.id, users.first_name, users.last_name FROM chats INNER JOIN users ON users.id=chats.user1 LEFT JOIN `blocks` ON blocks.blocker="+database.escape(req.session.user.id)+" AND blocks.blockie = users.id WHERE user2 = "+database.escape(req.session.user.id)+";", function (err, result1) {
+				if (err) throw err;
+				database.con.query("SELECT active, blocker, blockie, users.id, users.first_name, users.last_name FROM chats INNER JOIN users ON users.id=chats.user2 LEFT JOIN `blocks` ON blocks.blocker="+database.escape(req.session.user.id)+" AND blocks.blockie = users.id WHERE user1 = "+database.escape(req.session.user.id)+";", function (err, result2) {
+					if (err) throw err;
+						var result = result1.concat(result2);
+					result.sort(function(a, b){return(a.blocker != null)});
+					result.reverse();
+						var content = {
+							title: 'Chat',
+							session: req.session,
+							chats: result,
+							};
+							res.render('index', content);
+				});
 			});
-		});
 
+		}
 	}
 }
 
@@ -513,6 +492,7 @@ exports.addinterest = function (req, res){
 				if (!interests.includes(result[0].id))
 					interests.push(result[0].id);
 				database.con.query("UPDATE `users` SET `interests` = " + database.escape(JSON.stringify(interests)) + " WHERE `users`.`id` = " + database.escape(req.session.user.id) + ";");
+				req.session.interests = interests;
 				res.redirect('./profile?user=' + req.session.user.id);
 			});
 		});
@@ -540,6 +520,7 @@ exports.removeinterest = function (req, res){
 					interests = temp;
 				}
 				database.con.query("UPDATE `users` SET `interests` = " + database.escape(JSON.stringify(interests)) + " WHERE `users`.`id` = " + database.escape(req.session.user.id) + ";");
+				req.session.interest = interests;
 				res.redirect('./profile?user=' + req.session.user.id);
 			});
 		});
@@ -593,12 +574,22 @@ exports.addprofilepicture = function (req, res){
 	var FileReader = require('filereader');
 	var reader = new FileReader();
 	reader.setNodeChunkedEncoding(true);
-	req.files.profilepic.mv(('./temp.' + req.files.profilepic.mimetype.split(/\//)[1]), function (err) {
-		if (err) throw err
-		fs.readFile('./temp.' + req.files.profilepic.mimetype.split(/\//)[1], "base64", function (err, data) {
+	if (!fs.existsSync('public/images')){
+		fs.mkdirSync('publicimages');
+	}
+	if (!fs.existsSync('public/images/user' + req.session.user.id)){
+		fs.mkdirSync('public/images/user' + req.session.user.id);
+	}
+	glob('public/images/user' + req.session.user.id + '/pp.*', function (err, files) {
+		files.forEach(file => {
+			fs.unlinkSync(file);
+		});
+	});
+	req.files.profilepic.mv(('./public/images/user' + req.session.user.id + "/pp." + req.files.profilepic.mimetype.split(/\//)[1]), function (err) {
+		if (err) throw err;
+		database.con.query("UPDATE `users` SET profilepic=" + database.escape('./images/user' + req.session.user.id + "/pp." + req.files.profilepic.mimetype.split(/\//)[1]) + " WHERE id = " + req.session.user.id + ";", function (err) {
 			if (err) throw err;
-			var str = 'data:' + req.files.profilepic.mimetype + ';base64,' + data;
-			database.con.query("UPDATE `users` SET `profilepic` = " + database.escape(str) + " WHERE `id` = " + database.escape(req.session.user.id) + ";", function (err) { if (err) throw err; fs.unlink('./temp.' + req.files.profilepic.mimetype.split(/\//)[1], function () {res.redirect("./profile?user=" + req.session.user.id);})});
+			res.redirect('./profile?user=' + req.session.user.id);
 		});
 	});
 }
@@ -606,56 +597,75 @@ exports.addprofilepicture = function (req, res){
 exports.addpicture = function (req, res){
 	var FileReader = require('filereader');
 	var reader = new FileReader();
-	var done = 0;
 	reader.setNodeChunkedEncoding(true);
-	if (req.files.pic1)
-	{
-		req.files.pic1.mv(('./temp1.' + req.files.pic1.mimetype.split(/\//)[1]), function (err) {
-			if (err) throw err
-			fs.readFile('./temp1.' + req.files.pic1.mimetype.split(/\//)[1], "base64", function (err, data) {
+	if (!fs.existsSync('public/images')){
+		fs.mkdirSync('public/images');
+	}
+	if (!fs.existsSync('public/images/user' + req.session.user.id)){
+		fs.mkdirSync('public/images/user' + req.session.user.id);
+	}
+	if (req.files.pic1) {
+		glob('public/images/user' + req.session.user.id + '/p1.*', function (err, files) {
+			console.log(files);
+			files.forEach(file => {
+				fs.unlinkSync(file);
+			});
+		});
+		req.files.pic1.mv(('./public/images/user' + req.session.user.id + "/p1." + req.files.pic1.mimetype.split(/\//)[1]), function (err) {
+			if (err) throw err;
+			database.con.query("UPDATE `users` SET pic1=" + database.escape('./images/user' + req.session.user.id + "/p1." + req.files.pic1.mimetype.split(/\//)[1]) + " WHERE id = " + req.session.user.id + ";", function (err) {
 				if (err) throw err;
-				var str = 'data:' + req.files.pic1.mimetype + ';base64,' + data;
-				database.con.query("UPDATE `users` SET `pic1` = " + database.escape(str) + " WHERE `id` = " + database.escape(req.session.user.id) + ";", function (err) { if (err) throw err; fs.unlink('./temp1.' + req.files.pic1.mimetype.split(/\//)[1], function () {if (++done == 4) {res.redirect("./profile?user=" + req.session.user.id);}});});
+				res.redirect('./profile?user=' + req.session.user.id);
 			});
 		});
 	}
-	else if (++done == 4) {res.redirect("./profile?user=" + req.session.user.id);}
-	if (req.files.pic2)
-	{
-		req.files.pic2.mv(('./temp2.' + req.files.pic2.mimetype.split(/\//)[1]), function (err) {
-			if (err) throw err
-			fs.readFile('./temp2.' + req.files.pic2.mimetype.split(/\//)[1], "base64", function (err, data) {
+	else
+
+	if (req.files.pic2) {
+		glob('public/images/user' + req.session.user.id + '/p2.*', function (err, files) {
+			files.forEach(file => {
+				fs.unlinkSync(file);
+			});
+		});
+		req.files.pic2.mv(('./public/images/user' + req.session.user.id + "/p2." + req.files.pic2.mimetype.split(/\//)[1]), function (err) {
+			if (err) throw err;
+			database.con.query("UPDATE `users` SET pic2=" + database.escape('./images/user' + req.session.user.id + "/p2." + req.files.pic2.mimetype.split(/\//)[1]) + " WHERE id = " + req.session.user.id + ";", function (err) {
 				if (err) throw err;
-				var str = 'data:' + req.files.pic2.mimetype + ';base64,' + data;
-				database.con.query("UPDATE `users` SET `pic2` = " + database.escape(str) + " WHERE `id` = " + database.escape(req.session.user.id) + ";", function (err) { if (err) throw err; fs.unlink('./temp2.' + req.files.pic2.mimetype.split(/\//)[1], function () {if (++done == 4) {res.redirect("./profile?user=" + req.session.user.id);}});});
+				res.redirect('./profile?user=' + req.session.user.id);
 			});
 		});
 	}
-	else if (++done == 4) {res.redirect("./profile?user=" + req.session.user.id);}
-	if (req.files.pic3)
-	{
-		req.files.pic3.mv(('./temp3.' + req.files.pic3.mimetype.split(/\//)[1]), function (err) {
-			if (err) throw err
-			fs.readFile('./temp3.' + req.files.pic3.mimetype.split(/\//)[1], "base64", function (err, data) {
+	else
+
+	if (req.files.pic3) {
+		glob('public/images/user' + req.session.user.id + '/p3.*', function (err, files) {
+			files.forEach(file => {
+				fs.unlinkSync(file);
+			});
+		});
+		req.files.pic3.mv(('./public/images/user' + req.session.user.id + "/p3." + req.files.pic3.mimetype.split(/\//)[1]), function (err) {
+			if (err) throw err;
+			database.con.query("UPDATE `users` SET pic3=" + database.escape('./images/user' + req.session.user.id + "/p3." + req.files.pic3.mimetype.split(/\//)[1]) + " WHERE id = " + req.session.user.id + ";", function (err) {
 				if (err) throw err;
-				var str = 'data:' + req.files.pic3.mimetype + ';base64,' + data;
-				database.con.query("UPDATE `users` SET `pic3` = " + database.escape(str) + " WHERE `id` = " + database.escape(req.session.user.id) + ";", function (err) { if (err) throw err; fs.unlink('./temp3.' + req.files.pic3.mimetype.split(/\//)[1], function () {if (++done == 4) {res.redirect("./profile?user=" + req.session.user.id);}});});
+				res.redirect('./profile?user=' + req.session.user.id);
 			});
 		});
 	}
-	else if (++done == 4) {res.redirect("./profile?user=" + req.session.user.id);}
-	if (req.files.pic4)
-	{
-		req.files.pic4.mv(('./temp4.' + req.files.pic4.mimetype.split(/\//)[1]), function (err) {
-			if (err) throw err
-			fs.readFile('./temp4.' + req.files.pic4.mimetype.split(/\//)[1], "base64", function (err, data) {
+	else
+	if (req.files.pic4) {
+		glob('public/images/user' + req.session.user.id + '/p4.*', function (err, files) {
+			files.forEach(file => {
+				fs.unlinkSync(file);
+			});
+		});
+		req.files.pic4.mv(('./public/images/user' + req.session.user.id + "/p4." + req.files.pic4.mimetype.split(/\//)[1]), function (err) {
+			if (err) throw err;
+			database.con.query("UPDATE `users` SET pic4=" + database.escape('./images/user' + req.session.user.id + "/p4." + req.files.pic4.mimetype.split(/\//)[1]) + " WHERE id = " + req.session.user.id + ";", function (err) {
 				if (err) throw err;
-				var str = 'data:' + req.files.pic4.mimetype + ';base64,' + data;
-				database.con.query("UPDATE `users` SET `pic4` = " + database.escape(str) + " WHERE `id` = " + database.escape(req.session.user.id) + ";", function (err) { if (err) throw err; fs.unlink('./temp4.' + req.files.pic4.mimetype.split(/\//)[1], function () {if (++done == 4) {res.redirect("./profile?user=" + req.session.user.id);}});});
+				res.redirect('./profile?user=' + req.session.user.id);
 			});
 		});
 	}
-	else if (++done == 4) {res.redirect("./profile?user=" + req.session.user.id);}
 }
 
 exports.socket = function(socket) {
@@ -668,7 +678,17 @@ exports.socket = function(socket) {
 		socket.join(chat);
 	});
 
-	socket.on('disconnect', function(){
+	socket.on('disconnect', function () {
+		if (onlineusers.findIndex(function (a) {return (a.socket == socket.id)}) > -1)
+		{
+			socket.emit("offline", onlineusers.find(function (a) {return (a.socket == socket.id)}));
+			onlineusers.splice(onlineusers.findIndex(function (a) {return (a.socket == socket.id)}), 1);
+		}
+	});
+
+	socket.on("con", function(id) {
+		onlineusers.push({socket: socket.id, id: id});
+		app.io.emit("online", onlineusers.find(function (a) {return (a.socket == socket.id)}));
 	});
 }
 
@@ -685,4 +705,32 @@ exports.block = function(req, res) {
 		else
 			res.send("Already exsists");
 	});
+}
+
+exports.unblock = function(req, res) {
+	database.con.query("DELETE FROM `blocks` WHERE blocker = " + database.escape(req.query.blocker) + " AND blockie = " + database.escape(req.query.blockie) + ";", function (err, result) {
+		if (err) throw err;
+		res.send("done!");
+	});
+}
+
+exports.getOnline = function(req, res) {
+	if (req.session.user)
+	{
+		database.con.query("SELECT chats.active, user1, user2, blocker, blockie, chats.id FROM `chats` LEFT JOIN `blocks` ON (blocks.blocker=" + database.escape(req.session.user.id) + " AND blocks.blockie=user1) OR (blocks.blocker=user1 AND blocks.blockie=" + database.escape(req.session.user.id) + ") OR (blocks.blocker=user2 AND blocks.blockie=" + database.escape(req.session.user.id) + ") OR (blocks.blocker=user2 AND blocks.blockie=" + database.escape(req.session.user.id) + ") WHERE chats.active=1 AND blocker IS NULL;", function (err, result) {
+		if (err) throw err;
+			var finished = [];
+			onlineusers.forEach(function(user){
+				result.forEach(function (chat){
+					if ((chat.user1 == req.session.user.id && chat.user2 == user.id) || (chat.user2 == req.session.user.id && chat.user1 == user.id))
+					{
+						finished.push(chat);
+					}
+				});
+			});
+			console.log(finished);
+			res.send(JSON.stringify(result));
+		});
+	}
+	else res.send('hi');
 }

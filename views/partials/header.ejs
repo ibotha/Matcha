@@ -12,6 +12,7 @@
 		<script src="/socket.io/socket.io.js"></script>
 		<script>
 			var socket = io();
+			socket.emit("con", <%-session.user.id%>);
 		</script>
 		<% } %>
 	</head>

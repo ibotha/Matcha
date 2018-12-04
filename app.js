@@ -3,7 +3,6 @@ const app = express();
 const http = require('http').Server(app);
 const bodyParser = require('body-parser');
 const path = require('path');
-const expressValidator = require('express-validator');
 const session = require('express-session');
 const fileUpload = require('express-fileupload');
 const pages = require('./pagemanager.js');
@@ -36,24 +35,6 @@ app.use(function(req, res, next){
 	next();
 });
 
-// Validator
-app.use(expressValidator({
-	errorFormatter: function(param, msg, value) {
-		var namespace = param.split('.'),
-		root = namespace.shift(),
-		formParam = root;
-
-		while(namespace.length) {
-			formParam += '[' + namespace.shift() + ']';
-		}
-		return {
-			param: formParam,
-			msg: msg,
-			value: value
-		};
-	}
-}));
-
 app.get('/', pages.homePage);
 
 app.get('/login', pages.loginPage);
@@ -79,6 +60,10 @@ app.get('/removeinterest', pages.removeinterest);
 app.get('/verify', pages.verify);
 
 app.get('/block', pages.block);
+
+app.get('/unblock', pages.unblock);
+
+app.get('/getOnline', pages.getOnline);
 
 app.post('/change', pages.change);
 
