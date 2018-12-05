@@ -1,4 +1,4 @@
-<% if(errors) { %>
+<% if(locals.errors && errors.length) { %>
 	<ul class="errors">
 	<% errors.forEach(function(error){ if (error) {%>
 		<li class="error"><%= error %></li>

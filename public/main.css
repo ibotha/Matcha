@@ -242,3 +242,12 @@ input[type = file]
 	margin-right: 0;
 	margin-left: auto;
 }
+
+.onlineicon{
+	display: inline-block;
+	border: 1px solid grey;
+	width: 20px;
+	height: 20px;
+	border-radius: 50%;
+	background-color: darkgrey;
+}

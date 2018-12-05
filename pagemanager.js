@@ -84,6 +84,7 @@ function calculateAge(birthday) {
 
 exports.loginForm = function (req, res) {
 	req.session.errors = [];
+	req.body.email = req.body.email.toLowerCase();
 	if (!req.body.email.match(/^.*@.*\..*$/gm)) req.session.errors.push('Not Valid Email Format');
 	if (req.body.lon.length==0 || req.body.lat.length==0) req.session.errors.push('locerr');
 
@@ -177,6 +178,7 @@ exports.loginForm = function (req, res) {
 }
 
 exports.signupForm = function (req, res) {
+	req.body.email = req.body.email.toLowerCase();
 	req.session.errors = [];
 	if (!req.body.email.match(/^.*@.*\..*$/gm)) req.session.errors.push('Not Valid Email Format');
 	if (req.body.email.length==0) req.session.errors.push('Email is required');
@@ -245,6 +247,8 @@ exports.signupForm = function (req, res) {
 }
 
 exports.profilePage = function(req, res){
+	var errors = req.session.errors;
+	req.session.errors = [];
 	if (req.query.user)
 		database.con.query("SELECT * FROM `users` WHERE id = " + database.escape(req.query.user) + "LIMIT 1", function (err, result, fields) {
 			if (err) throw err;
@@ -279,11 +283,13 @@ exports.profilePage = function(req, res){
 											session: req.session,
 											user: user,
 											cats: cats,
+											errors: errors
 										});
 									else
 										res.render('index', {
 											title: 'Profile',
 											user: user,
+											errors: errors
 										});
 								}
 								else ++done;
@@ -302,11 +308,13 @@ exports.profilePage = function(req, res){
 											session: req.session,
 											user: user,
 											cats: cats,
+											errors: errors
 										});
 									else
 										res.render('index', {
 											title: 'Profile',
 											user: user,
+											errors: errors
 										});
 								}
 								else ++done;
@@ -343,13 +351,20 @@ exports.homePage = function(req, res) {
 		var prefsearch = '', dist = '', score = '';
 	var statement = "SELECT id, first_name, last_name, pic1, profilepic, birthdate, fame, bio, gender, preference, interests" + dist + score +
 	", blocks.blocker, blocks.blockie FROM `users` LEFT JOIN blocks ON blocks.blocker=" + (req.session.user?database.escape(req.session.user.id):"0") + " AND blocks.blockie=users.id WHERE valid = 1 AND blocks.blockie IS NULL " + prefsearch +
-	" ORDER BY " + (score ? "score, " : "") + (dist ? "dist, " : "") + "fame DESC LIMIT 5;";
+	" ORDER BY " + (score ? "score DESC," : "") + (dist ? "dist, " : "") + "fame DESC LIMIT 5;";
 	database.con.query(statement, function (err, result) {
 		if (err) throw err;
 		database.con.query("SELECT * FROM `interests`;", function (err, interests) {
 		result.forEach(user => {
 			user.age = calculateAge(user.birthdate);
+			if (req.session.user)
+			{
+			var agegap = Math.abs(user.age - req.session.user.age);
+			var scorechange = agegap / ((Math.min(req.session.user.age, user.age) - 16) / 4);
+			user.score -= scorechange;
+		}
 		});
+		result.sort((a, b) => {return a.score < b.score});
 			if (err) throw err;
 				if (req.session.user)
 					res.render('index', {
@@ -404,14 +419,14 @@ exports.chatPage = function(req, res){
 									if (err) throw err;
 									database.con.query("UPDATE `users` SET `fame` = "+database.escape(content.reciever.fame + 1)+" WHERE `users`.`id` = "+database.escape(content.reciever.id)+";", function (err) {
 										if (err) throw err;
-										res.redirect(req.url);
+										res.redirect('./');
 									});
 								});
 							}
 							else
 							{
-								content.chat = result[0].id;
-								database.con.query("SELECT * FROM `messages` WHERE `chatid` = "+database.escape(content.chat)+" ORDER BY `id`", function(err, result) {
+								content.chat = result[0];
+								database.con.query("SELECT * FROM `messages` WHERE `chatid` = "+database.escape(content.chat.id)+" ORDER BY `id`", function(err, result) {
 									if (err) throw err;
 									content.messages = result;
 									res.render('index', content);
@@ -424,9 +439,9 @@ exports.chatPage = function(req, res){
 		}
 		else
 		{
-			database.con.query("SELECT active, blocker, blockie, users.id, users.first_name, users.last_name FROM chats INNER JOIN users ON users.id=chats.user1 LEFT JOIN `blocks` ON blocks.blocker="+database.escape(req.session.user.id)+" AND blocks.blockie = users.id WHERE user2 = "+database.escape(req.session.user.id)+";", function (err, result1) {
+			database.con.query("SELECT active, blocker, blockie, users.id, users.first_name, users.last_name, chats.user2, chats.id AS chat_id FROM chats INNER JOIN users ON users.id=chats.user1 LEFT JOIN `blocks` ON blocks.blocker="+database.escape(req.session.user.id)+" AND blocks.blockie = users.id WHERE user2 = "+database.escape(req.session.user.id)+";", function (err, result1) {
 				if (err) throw err;
-				database.con.query("SELECT active, blocker, blockie, users.id, users.first_name, users.last_name FROM chats INNER JOIN users ON users.id=chats.user2 LEFT JOIN `blocks` ON blocks.blocker="+database.escape(req.session.user.id)+" AND blocks.blockie = users.id WHERE user1 = "+database.escape(req.session.user.id)+";", function (err, result2) {
+				database.con.query("SELECT active, blocker, blockie, users.id, users.first_name, users.last_name, chats.user2, chats.id AS chat_id FROM chats INNER JOIN users ON users.id=chats.user2 LEFT JOIN `blocks` ON blocks.blocker="+database.escape(req.session.user.id)+" AND blocks.blockie = users.id WHERE user1 = "+database.escape(req.session.user.id)+";", function (err, result2) {
 					if (err) throw err;
 						var result = result1.concat(result2);
 					result.sort(function(a, b){return(a.blocker != null)});
@@ -530,44 +545,65 @@ exports.removeinterest = function (req, res){
 }
 
 exports.change = function (req, res){
-	passerr = null;
+	req.session.errors = [];
 	if (req.body.email){
-		req.checkBody('email', 'Invalid Email').isEmail();
-		req.checkBody('email', 'Email Too Long').isLength({max: 100});
-		passerr = req.validationErrors();
-		if (!passerr)
-			database.con.query("UPDATE `users` SET `email` = " + database.escape(req.body.email) + " WHERE `id` = " + database.escape(req.session.user.id) + ";", function(err){if(err) throw err});
+		if (!req.body.email.match(/^.*@.*\..*$/gm)) req.session.errors.push('Not Valid Email Format');
+		if (req.body.email.length==0) req.session.errors.push('Email is required');
+		if (req.body.email.length>100) req.session.errors.push('Email too long');
+		if (req.session.errors.length == 0)
+		{
+			database.con.query("UPDATE `users` SET `email` = " + database.escape(req.body.email) + " WHERE `id` = " + database.escape(req.session.user.id) + ";", function(err){
+				if(err) throw err
+				req.session.user.email = req.body.email;
+				res.redirect('./profile?user=' + req.session.user.id);
+			});
+		} else
+		res.redirect('./profile?user=' + req.session.user.id);
 	} else if (req.body.first_name && req.body.last_name){
-		req.checkBody('first_name', 'First Name is Required').notEmpty();
-		req.checkBody('first_name', 'First Name Too Long').isLength({max: 20});
-		req.checkBody('last_name', 'Last Name is Required').notEmpty();
-		req.checkBody('last_name', 'Last Name Too Long').isLength({max: 20});
-		passerr = req.validationErrors();
-		if (!passerr)
-			database.con.query("UPDATE `users` SET `first_name` = " + database.escape(req.body.first_name) + ", `last_name` = " + database.escape(req.body.last_name) + " WHERE `id` = " + database.escape(req.session.user.id) + ";", function(err){if(err) throw err});
+		if (req.body.first_name.length==0) req.session.errors.push('First Name is required');
+		if (req.body.first_name.length > 30) req.session.errors.push('First Name is too long');
+		if (req.body.last_name.length==0) req.session.errors.push('Last Name is required');
+		if (req.body.last_name.length > 30) req.session.errors.push('Last Name is too long');
+		if (req.session.errors.length == 0)
+			database.con.query("UPDATE `users` SET `first_name` = " + database.escape(req.body.first_name) + ", `last_name` = " + database.escape(req.body.last_name) + " WHERE `id` = " + database.escape(req.session.user.id) + ";", function(err) {
+				if(err) throw err
+				req.session.user.first_name = req.body.first_name;
+				req.session.user.last_name = req.body.last_name;
+				res.redirect('./profile?user=' + req.session.user.id);
+			});
+		else
+			res.redirect('./profile?user=' + req.session.user.id);
 	} else if (req.body.confirm && req.body.old_password && req.body.new_password){
-		req.checkBody('new_password', 'Password Must Be at Least 8 Characters Long and Contain at Least: 1 Special, Capital, Numeric and Lower Case Character').matches(/^(?=.*\d)(?=.*[^a-zA-Z\d])(?=.*[a-z])(?=.*[A-Z]).{8,}$/);
-		req.checkBody('confirm', 'Passwords Must Match').equals(req.body.new_password);
-		if (!req.validationErrors())
+		if (!req.body.new_password.match(/^(?=.*\d)(?=.*[^a-zA-Z\d])(?=.*[a-z])(?=.*[A-Z]).{8,}$/)) req.session.errors.push('Password Must Be at Least 8 Characters Long and Contain at Least: 1 Special, Capital, Numeric and Lower Case Character');
+		if (req.body.new_password.length==0) req.session.errors.push('Password is required');
+		if (req.body.confirm != req.body.password) req.session.errors.push('Passwords Don\'t match');
+		if (req.session.errors.length == 0)
 		{
 			database.con.query("SELECT * FROM `users` WHERE id = " + database.escape(req.session.user.id) + " LIMIT 1", function (err, result, fields) {
 				if (err) throw err;
 				if (change(req.body.old_password) == result[0].password)
 					database.con.query("UPDATE `users` SET `password` = " + database.escape(change(req.body.new_password)) + " WHERE `id` = " + database.escape(req.session.user.id) + ";", function(err){if(err) throw err});
 				else
-					passerr = [{ msg: "Password incorrect" }];
+					req.session.errors.push("Password incorrect");
+				res.redirect('./profile?user=' + req.session.user.id);
 			});
 		}
-		else passerr = req.validationErrors();
+		else
+			res.redirect('./profile?user=' + req.session.user.id);
 	} else if (req.body.gender){
-		database.con.query("UPDATE `users` SET `gender` = " + database.escape(genset[req.body.gender]) + ", `preference` = " + database.escape(prefset[req.body.preference]) + " WHERE `id` = " + database.escape(req.session.user.id) + ";", function(err){if(err) throw err});
-	}
+		database.con.query("UPDATE `users` SET `gender` = " + database.escape(genset[req.body.gender]) + ", `preference` = " + database.escape(prefset[req.body.preference]) + " WHERE `id` = " + database.escape(req.session.user.id) + ";", function(err){
+			if(err) throw err
+			req.session.user.gender = genset[req.body.gender];
+			req.session.user.preference = prefset[req.body.preference];
+			res.redirect('./profile?user=' + req.session.user.id);
+		});
+	} else
 	res.redirect('./profile?user=' + req.session.user.id);
 }
 
 exports.verify = function (req, res){
 	database.con.query("UPDATE `users` SET `valid` = '1' WHERE verif = " + database.escape(req.query.verif) + ";", function(err){if (err) throw err});
-	res.redirect("./");
+	res.redirect("./login");
 }
 
 exports.addprofilepicture = function (req, res){
@@ -681,14 +717,12 @@ exports.socket = function(socket) {
 	socket.on('disconnect', function () {
 		if (onlineusers.findIndex(function (a) {return (a.socket == socket.id)}) > -1)
 		{
-			socket.emit("offline", onlineusers.find(function (a) {return (a.socket == socket.id)}));
 			onlineusers.splice(onlineusers.findIndex(function (a) {return (a.socket == socket.id)}), 1);
 		}
 	});
 
 	socket.on("con", function(id) {
 		onlineusers.push({socket: socket.id, id: id});
-		app.io.emit("online", onlineusers.find(function (a) {return (a.socket == socket.id)}));
 	});
 }
 
@@ -722,15 +756,35 @@ exports.getOnline = function(req, res) {
 			var finished = [];
 			onlineusers.forEach(function(user){
 				result.forEach(function (chat){
-					if ((chat.user1 == req.session.user.id && chat.user2 == user.id) || (chat.user2 == req.session.user.id && chat.user1 == user.id))
+					if (chat.user1 == req.session.user.id && chat.user2 == user.id)
 					{
-						finished.push(chat);
+						finished.push(chat.user2);
+					}
+					else if (chat.user2 == req.session.user.id && chat.user1 == user.id)
+					{
+						finished.push(chat.user1);
 					}
 				});
 			});
-			console.log(finished);
-			res.send(JSON.stringify(result));
+			res.end(JSON.stringify(finished));
 		});
 	}
-	else res.send('hi');
+	else res.end('[]');
+}
+
+exports.activateChat = function(req, res) {
+	database.con.query("SELECT * FROM `chats` WHERE id = " + database.escape(req.query.chat) + ";", (err, result) => {
+		if (err) throw err;
+		if (result.length == 0)
+			res.redirect('./');
+		else
+		{
+			if (req.session.user.id == result[0].user2)
+			{
+				database.con.query("UPDATE `chats` SET `active` = '1' WHERE `chats`.`id` = "+database.escape(req.query.chat)+";", (err) => {if (err) throw err; res.redirect('./chat')})
+			}
+			else
+				res.redirect('./');
+		}
+	});
 }

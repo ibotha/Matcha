@@ -16,11 +16,11 @@
 						<span>Sexuality: <%= prefset[user.preference] %></span><br>
 						<span>Age: <%= user.age %></span><br>
 						<span>Fame: <%= user.fame %></span><br>
-						<% if (user.dist !== undefined) { %>
+						<% if (user.dist && user.dist !== undefined) { %>
 							<span>Dist: <%= user.dist.toFixed(2) %>km</span><br>
 						<% } %>
-						<% if (user.score !== undefined) { %>
-							<span>Score: <%= user.score %></span><br>
+						<% if (user.score && user.score !== undefined) { %>
+							<span>Score: <%= user.score.toFixed(2) %></span><br>
 						<% } %>
 					</div>
 					<div class="divider"></div>

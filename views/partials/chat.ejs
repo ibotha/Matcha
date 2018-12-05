@@ -1,24 +1,31 @@
 <div class="container-fluid" id="home">
 <script>
+	let post = $.post;
 	setInterval(function () {
-		var xhttp = new XMLHttpRequest();
-
-		xhttp.onreadystatechange = function () {
-			if (this.readyState == 4 && this.status == 400)
-				console.log(this.responseText);
-		};
-
-		xhttp.open('GET', '/getOnline');
-		xhttp.send();
-	}, 4000);
+		post('/getOnline', {}).done(function(data) {
+			onlineusers = JSON.parse(data);
+			icons = document.querySelectorAll(".onlineicon");
+			icons.forEach(icon => {
+				if (onlineusers.find(a => {return a == icon.id}))
+					icon.style = "background-color: lightgreen;";
+				else
+					icon.style = "background-color: darkgrey;";
+			});
+		});
+	}, 1000);
 </script>
 <% if (locals.reciever) { %>
+	<% if (chat.active == 0 && chat.user1 == session.user.id) { %>
+		<h1> Other User has not confirmed chat </h1>
+	<% } else if (chat.active == 0 && chat.user2 == session.user.id) { %>
+		<script>location.replace('/activateChat?chat=' + <%= chat.id %>)</script>
+	<% } else {%>
 	<div id="messages">
 		<% messages.forEach( function (message) { %>
 			<div class="<%= message.reciever == session.user.id ? "other" : "local" %> floating"><%= message.message %></div>
 		<% }) %>
 	</div>
-	<h2 style="pointer-events: none; position: fixed; top: 0; text-align: center; width: 100%; z-index: 1000;"> <%= reciever.first_name %> </h2>
+	<h2 style="pointer-events: none; position: fixed; top: 0; text-align: center; width: 100%; z-index: 1000;"> <%= reciever.first_name %> <div class="onlineicon" id="<%= reciever.id %>"></div></h2>
 	<form class="floating" action="" id="chat">
 		<input class="form-control" id="m" autocomplete="off"/>
 		<input type="button" class="btn" value="Send" id="submit">
@@ -33,7 +40,7 @@
 			});
 		
 		
-		socket.emit('init', <%= chat %>);
+		socket.emit('init', <%= chat.id %>);
 		messagebox.scrollTop = messagebox.scrollHeight;
 		socket.on('getMsg', function (cont) {
 			messagebox.innerHTML += "<div class='" + ((cont.reciever == <%= session.user.id %>) ? "other" : "local") + " floating'>" + cont.msg.replace(/</g, "&lt") + "</div>";
@@ -46,11 +53,12 @@
 		});
 
 		$("#submit").click(function () {
-			socket.emit('sendMsg', {msg: $("#m").val(), reciever: <%= reciever.id %>, chat: <%= chat %>});
+			socket.emit('sendMsg', {msg: $("#m").val(), reciever: <%= reciever.id %>, chat: <%= chat.id %>});
 			$("#m").val('');
 			return false;
 		});
 	</script>
+	<% } %>
 <% } else { %>
 	<script>
 		function block(blocker, blockie)
@@ -88,20 +96,22 @@
 		}
 	</script>
 	<% chats.forEach( function (chat) { %>
-	<a href=<%= "chat?reciever=" + chat.id + "" %> <%- chat.blocker? 'style="pointer-events: none"' : "" %>>
-		<div class="btn floating" style="text-align: center; margin: 40px 1px 40px 4%; width: 80% !important;">
-			<%= chat.first_name + " " + chat.last_name %>
-		</div>
-	</a>
-	<a onclick="<%= (chat.blocker?"un":"") %>block(<%= session.user.id %>, <%= chat.id %>)">
-		<div class="btn floating" style=<%- '"' + (chat.blocker?"background-color: black !important; border-color: black !important;":"") + 'text-align: center; margin: 40px 4% 40px 1px; width: 10% !important;"' %>>
-			<% if (!chat.blocker) { %>
-				block
-			<% } else { %>
-				unblock
-			<% } %>
-		</div>
-	</a>
+		<div class="onlineicon" id="<%= chat.id %>"></div>
+		<a href=<%= "chat?reciever=" + chat.id + "" %> <%- chat.blocker? 'style="pointer-events: none"' : "" %>>
+			<div class="btn floating" style="text-align: center; margin: 40px 1px 40px 4%; width: 75% !important;">
+				<%= ((chat.active == 0 && chat.user2 == session.user.id) ? ("Confirm") : (chat.first_name + " " + chat.last_name)) %>
+			</div>
+		</a>
+		<a onclick="<%= (chat.blocker?"un":"") %>block(<%= session.user.id %>, <%= chat.id %>)">
+			<div class="btn floating" style=<%- '"' + (chat.blocker?"background-color: black !important; border-color: black !important;":"") + 'text-align: center; margin: 40px 4% 40px 1px; width: 10% !important;"' %>>
+				<% if (!chat.blocker) { %>
+					block
+				<% } else { %>
+					unblock
+				<% } %>
+			</div>
+		</a>
+		<br>
 	<% }) %>
 <% } %>
 </div>

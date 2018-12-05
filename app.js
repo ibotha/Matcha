@@ -63,7 +63,9 @@ app.get('/block', pages.block);
 
 app.get('/unblock', pages.unblock);
 
-app.get('/getOnline', pages.getOnline);
+app.get('/activateChat', pages.activateChat);
+
+app.post('/getOnline', pages.getOnline);
 
 app.post('/change', pages.change);
 
