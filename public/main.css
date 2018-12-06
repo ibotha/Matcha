@@ -246,8 +246,18 @@ input[type = file]
 .onlineicon{
 	display: inline-block;
 	border: 1px solid grey;
-	width: 20px;
-	height: 20px;
+	width: 100%;
+	padding-top:100% !important;
 	border-radius: 50%;
 	background-color: darkgrey;
+}
+
+.blockicon{
+	display: inline-block;
+	border: 1px solid grey;
+	width: 100%;
+	padding-top:100% !important;
+	border-radius: 50%;
+	background-color: darkgrey;
+	margin: 0;
 }

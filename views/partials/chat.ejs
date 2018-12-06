@@ -1,11 +1,10 @@
 <div class="container-fluid" id="home">
 <script>
-	let post = $.post;
 	setInterval(function () {
 		post('/getOnline', {}).done(function(data) {
 			onlineusers = JSON.parse(data);
 			icons = document.querySelectorAll(".onlineicon");
-			icons.forEach(icon => {
+			icons.forEach(icon => {console.log(icon);
 				if (onlineusers.find(a => {return a == icon.id}))
 					icon.style = "background-color: lightgreen;";
 				else
@@ -25,7 +24,7 @@
 			<div class="<%= message.reciever == session.user.id ? "other" : "local" %> floating"><%= message.message %></div>
 		<% }) %>
 	</div>
-	<h2 style="pointer-events: none; position: fixed; top: 0; text-align: center; width: 100%; z-index: 1000;"> <%= reciever.first_name %> <div class="onlineicon" id="<%= reciever.id %>"></div></h2>
+	<h2 style="display: flex; pointer-events: none; position: fixed; top: 0; right: 37%; text-align: center; z-index: 1000;"> <%= reciever.first_name %><div style="width: 20px; margin-left: 20px; padding-top: 10px;"><div class="onlineicon" id="<%= reciever.id %>"></div></div></h2>
 	<form class="floating" action="" id="chat">
 		<input class="form-control" id="m" autocomplete="off"/>
 		<input type="button" class="btn" value="Send" id="submit">
@@ -96,22 +95,29 @@
 		}
 	</script>
 	<% chats.forEach( function (chat) { %>
-		<div class="onlineicon" id="<%= chat.id %>"></div>
-		<a href=<%= "chat?reciever=" + chat.id + "" %> <%- chat.blocker? 'style="pointer-events: none"' : "" %>>
-			<div class="btn floating" style="text-align: center; margin: 40px 1px 40px 4%; width: 75% !important;">
+	<div class="row mb-5"></div>
+	<div class="row">
+		<div class="col-3" align="center">
+			<div style="max-width: 40px;">
+				<div class="onlineicon" id="<%= chat.id %>"></div>
+			</div>
+		</div>
+		<div class="col-5">
+		<a href=<%= "chat?reciever=" + chat.id + "" %> <%- chat.blocker? 'style="pointer-events: none;"' : "" %>>
+			<div class="btn floating" style="text-align: center; width: 100% !important; margin: 0;">
 				<%= ((chat.active == 0 && chat.user2 == session.user.id) ? ("Confirm") : (chat.first_name + " " + chat.last_name)) %>
 			</div>
 		</a>
+		</div>
+		<div class="col-3" align="center">
+		<div style="max-width: 40px;">
 		<a onclick="<%= (chat.blocker?"un":"") %>block(<%= session.user.id %>, <%= chat.id %>)">
-			<div class="btn floating" style=<%- '"' + (chat.blocker?"background-color: black !important; border-color: black !important;":"") + 'text-align: center; margin: 40px 4% 40px 1px; width: 10% !important;"' %>>
-				<% if (!chat.blocker) { %>
-					block
-				<% } else { %>
-					unblock
-				<% } %>
-			</div>
+				<div title="block/unblock" class="blockicon" style=<%- '"' + (chat.blocker?"background-color: black !important; border-color: black !important;":"") + 'text-align: center;"' %>>
+				</div>
 		</a>
-		<br>
+		</div>
+		</div>
+	</div>
 	<% }) %>
 <% } %>
 </div>

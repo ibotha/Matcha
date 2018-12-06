@@ -67,6 +67,8 @@ app.get('/activateChat', pages.activateChat);
 
 app.post('/getOnline', pages.getOnline);
 
+app.post('/getNotifications', pages.getNotifications);
+
 app.post('/change', pages.change);
 
 app.post('/addprofilepicture', pages.addprofilepicture);

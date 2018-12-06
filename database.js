@@ -45,6 +45,13 @@ var tables = {
 	"`creation` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP," +
 	"PRIMARY KEY (id)" +
 	")",
+	notifications: "CREATE TABLE IF NOT EXISTS `matcha`.`notifications` (" +
+	"id int NOT NULL AUTO_INCREMENT," +
+	"user int NOT NULL," +
+	"message varchar(100)," +
+	"interaction varchar(1000) NOT NULL," +
+	"PRIMARY KEY (id)" +
+	")",
 	chats: "CREATE TABLE IF NOT EXISTS `matcha`.`chats` (" +
 	"id int NOT NULL AUTO_INCREMENT," +
 	"user1 int NOT NULL," +
@@ -159,6 +166,10 @@ function createTables(err) {
 	con.query(tables.blocks, function (err) {
 		if (err) throw err;
 		console.log("blocks table created");
+	});
+	con.query(tables.notifications, function (err) {
+		if (err) throw err;
+		console.log("notifications table created");
 	});
 	con.query("DROP FUNCTION IF EXISTS DIST;", function (err) {
 		if (err) throw err;

@@ -21,6 +21,32 @@ var transporter = nodemailer.createTransport(
 
 var onlineusers = [];
 
+function blockCompare(a, b){return(b.blocker != null)}
+
+function sortblocks(nu1, nu2)
+{
+	nu1.sort(blockCompare);
+	nu2.sort(blockCompare);
+	var ret = [];
+	var current = 0;
+	var index1 = 0;
+	var index2 = 0;
+	while (current < (nu1.length + nu2.length)) {
+		if ((index2 >= nu2.length) || (index1 < nu1.length && nu1[index1].blocker != null)) {
+			ret[current] = nu1[index1];
+			index1++;
+
+		} else {
+			ret[current] = nu2[index2];
+			index2++;
+		}
+  
+		current++;
+	}
+	ret.reverse();
+	return ret;
+}
+
 function sendVerif(user, type) {
 	var verif = change(Math.random().toString());
 	var newpass = Math.random().toString();
@@ -355,30 +381,35 @@ exports.homePage = function(req, res) {
 	database.con.query(statement, function (err, result) {
 		if (err) throw err;
 		database.con.query("SELECT * FROM `interests`;", function (err, interests) {
-		result.forEach(user => {
-			user.age = calculateAge(user.birthdate);
-			if (req.session.user)
-			{
-			var agegap = Math.abs(user.age - req.session.user.age);
-			var scorechange = agegap / ((Math.min(req.session.user.age, user.age) - 16) / 4);
-			user.score -= scorechange;
-		}
-		});
-		result.sort((a, b) => {return a.score < b.score});
 			if (err) throw err;
+			var done = 0;
+			result.forEach(user => {
+				user.age = calculateAge(user.birthdate);
 				if (req.session.user)
-					res.render('index', {
-						title: 'Home',
-						session: req.session,
-						users: result,
-						interests: interests
-					});
-				else
-					res.render('index', {
-						title: 'Home',
-						users: result,
-						interests: interests
-					});
+				{
+					var agegap = Math.abs(user.age - req.session.user.age);
+					var scorechange = agegap / ((Math.min(req.session.user.age, user.age) - 16) / 4);
+					user.score -= scorechange;
+				}
+				done++;
+				if (done == result.length)
+				{
+					result.sort((a, b) => {return (b.score - a.score)});
+					if (req.session.user)
+						res.render('index', {
+							title: 'Home',
+							session: req.session,
+							users: result,
+							interests: interests
+						});
+					else
+						res.render('index', {
+							title: 'Home',
+							users: result,
+							interests: interests
+						});
+				}
+			});
 		});
 	});
 }
@@ -443,15 +474,13 @@ exports.chatPage = function(req, res){
 				if (err) throw err;
 				database.con.query("SELECT active, blocker, blockie, users.id, users.first_name, users.last_name, chats.user2, chats.id AS chat_id FROM chats INNER JOIN users ON users.id=chats.user2 LEFT JOIN `blocks` ON blocks.blocker="+database.escape(req.session.user.id)+" AND blocks.blockie = users.id WHERE user1 = "+database.escape(req.session.user.id)+";", function (err, result2) {
 					if (err) throw err;
-						var result = result1.concat(result2);
-					result.sort(function(a, b){return(a.blocker != null)});
-					result.reverse();
-						var content = {
-							title: 'Chat',
-							session: req.session,
-							chats: result,
-							};
-							res.render('index', content);
+					var result = sortblocks(result1, result2);
+					var content = {
+						title: 'Chat',
+						session: req.session,
+						chats: result,
+						};
+						res.render('index', content);
 				});
 			});
 
@@ -767,6 +796,17 @@ exports.getOnline = function(req, res) {
 				});
 			});
 			res.end(JSON.stringify(finished));
+		});
+	}
+	else res.end('[]');
+}
+
+exports.getNotifications = function(req, res) {
+	if (req.session.user)
+	{
+		database.con.query("SELECT * FROM `notifications` WHERE user ="+database.escape(req.body.user)+";", function (err, result) {
+		if (err) throw err;
+			res.end(JSON.stringify(result));
 		});
 	}
 	else res.end('[]');
