@@ -85,10 +85,10 @@ const genset = {
 const prefset = {
 	Heterosexual: 0,
 	Homosexual: 1,
-	Bisexual: 2,
+	'Bi-Sexual': 2,
 	0: 'Heterosexual',
 	1: 'Homosexual',
-	2: 'Bisexual',
+	2: 'Bi-Sexual',
 }
 
 function change(str)
@@ -218,9 +218,11 @@ exports.signupForm = function (req, res) {
 	if (req.body.last_name.length > 30) req.session.errors.push('Last Name is too long');
 	if (req.body.age.length==0) req.session.errors.push('Birthdate is Required');
 	if (!req.body.age.match(/^[0-9]{4}\-[0-9]{2}\-[0-9]{2}$/)) req.session.errors.push('Invalid Birthdate');
+	if (prefset[req.body.preference] == undefined) req.session.errors.push('Invalid Preference');
+	if (genset[req.body.gender] == undefined) req.session.errors.push('Invalid Gender');
 	var birthdate = calculateAge(req.body.age);
 	if (birthdate < 18) req.session.errors.push('You are too young');
-
+	console.log(req.body);
  	var errors = req.session.errors;
 	var current = {
 		email: req.body.email ? req.body.email : "",
@@ -369,7 +371,7 @@ exports.homePage = function(req, res) {
 				prefsearch += " gender = " + database.escape(req.session.user.gender) + " AND preference = " + database.escape(req.session.user.preference);
 			break;
 			case 2:
-				prefsearch += " (gender = '0' AND (preference = '2' OR preference = " + database.escape(!req.session.user.gender) + ")) OR (gender = '0' AND (preference = '2' OR preference = " + database.escape(req.session.user.gender) + "))";
+				prefsearch += " (gender = '0' AND (preference = '2' OR preference = " + database.escape(!req.session.user.gender ? 1 : 0) + ")) OR (gender = '1' AND (preference = '2' OR preference = " + database.escape(req.session.user.gender) + "))";
 			break;
 		}
 	}
@@ -377,7 +379,7 @@ exports.homePage = function(req, res) {
 		var prefsearch = '', dist = '', score = '';
 	var statement = "SELECT id, first_name, last_name, pic1, profilepic, birthdate, fame, bio, gender, preference, interests" + dist + score +
 	", blocks.blocker, blocks.blockie FROM `users` LEFT JOIN blocks ON blocks.blocker=" + (req.session.user?database.escape(req.session.user.id):"0") + " AND blocks.blockie=users.id WHERE valid = 1 AND blocks.blockie IS NULL " + prefsearch +
-	" ORDER BY " + (score ? "score DESC," : "") + (dist ? "dist, " : "") + "fame DESC LIMIT 5;";
+	" ORDER BY " + (score ? "score DESC," : "") + (dist ? "dist, " : "") + "fame DESC;";
 	database.con.query(statement, function (err, result) {
 		if (err) throw err;
 		database.con.query("SELECT * FROM `interests`;", function (err, interests) {
