@@ -1,0 +1,19 @@
+<% include partials/header %>
+
+<div class="row mb-3"></div>
+<form class="container floating-change" align="center" action="./report" method="post">
+<H1 style="text-align: center"> You are about to report "
+<%-reciever.first_name%>
+"<br>
+Please give a reason below.
+</H1>
+<div class="row mb-3"></div>
+<textarea name="reason" class="form-control" style="" required></textarea>
+<div class="row mb-3"></div>
+<input type="hidden" name="reporter" value="<%-reporter%>">
+<input type="hidden" name="reciever" value="<%-reciever.id%>">
+<input type="hidden" name="name" value="<%-reciever.first_name%>">
+<button class="btn" type="submit">Report</button>
+</form>
+
+<% include partials/footer %>

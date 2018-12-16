@@ -65,6 +65,12 @@ app.get('/unblock', pages.unblock);
 
 app.get('/activateChat', pages.activateChat);
 
+app.get('/report', pages.report);
+
+app.get('/deleteNotification', pages.deleteNotification);
+
+app.post('/report', pages.reportForm);
+
 app.post('/getOnline', pages.getOnline);
 
 app.post('/getNotifications', pages.getNotifications);

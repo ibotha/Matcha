@@ -4,7 +4,7 @@
 		post('/getOnline', {}).done(function(data) {
 			onlineusers = JSON.parse(data);
 			icons = document.querySelectorAll(".onlineicon");
-			icons.forEach(icon => {console.log(icon);
+			icons.forEach(icon => {
 				if (onlineusers.find(a => {return a == icon.id}))
 					icon.style = "background-color: lightgreen;";
 				else
@@ -15,7 +15,7 @@
 </script>
 <% if (locals.reciever) { %>
 	<% if (chat.active == 0 && chat.user1 == session.user.id) { %>
-		<h1> Other User has not confirmed chat </h1>
+		<h1> Request has been sent. Waiting for other user to confirm </h1>
 	<% } else if (chat.active == 0 && chat.user2 == session.user.id) { %>
 		<script>location.replace('/activateChat?chat=' + <%= chat.id %>)</script>
 	<% } else {%>
@@ -46,13 +46,8 @@
 			messagebox.scrollTop = messagebox.scrollHeight;
 		});
 
-		socket.on("online", function(id) {
-			if (id)
-			console.log(id.id + ": online");
-		});
-
 		$("#submit").click(function () {
-			socket.emit('sendMsg', {msg: $("#m").val(), reciever: <%= reciever.id %>, chat: <%= chat.id %>});
+			socket.emit('sendMsg', {msg: $("#m").val(), reciever: <%= reciever.id %>, chat: <%= chat.id %>, name: "<%=session.user.first_name%>"});
 			$("#m").val('');
 			return false;
 		});
@@ -105,7 +100,7 @@
 		<div class="col-5">
 		<a href=<%= "chat?reciever=" + chat.id + "" %> <%- chat.blocker? 'style="pointer-events: none;"' : "" %>>
 			<div class="btn floating" style="text-align: center; width: 100% !important; margin: 0;">
-				<%= ((chat.active == 0 && chat.user2 == session.user.id) ? ("Confirm") : (chat.first_name + " " + chat.last_name)) %>
+				<%= chat.first_name + " " + chat.last_name + ((chat.active == 0 && chat.user2 == session.user.id) ? (" [Confirm]") : ("")) %>
 			</div>
 		</a>
 		</div>

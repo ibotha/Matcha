@@ -13,20 +13,34 @@
 		<script>
 			var socket = io();
 			socket.emit("con", <%-session.user.id%>);
+
+			function deleteNotification(id) {
+				var xhttp = new XMLHttpRequest();
+
+				xhttp.onreadystatechange = function ()
+				{
+					if (this.readyState==4 && this.status == 200)
+					{
+					}
+				}
+				xhttp.open("GET", "deleteNotification?id=" + id);
+				xhttp.send();
+			}
+
 			window.onload = function ()
 			{
-				/*setInterval(function () {
+				setInterval(function () {
+					document.getElementById("notify").style.display="none";
 					post('/getNotifications', {user: <%-session.user.id%>}).done(function(data) {
 						notifications = JSON.parse(data);
-						console.log(notifications);
 						var note = document.getElementById("notifications");
 						note.innerHTML = "";
 						notifications.forEach(n => {
-							note.innerHTML += n.message + "<br>";
-							note.innerHTML += n.interaction + "<div class='dropdown-divider'></div>";
+							document.getElementById("notify").style.display="block";
+							note.innerHTML += "<a onclick=\"deleteNotification("+n.id+")\">" + n.message + "<hr></a>";
 						});
 					});
-				}, 1000);*/
+				}, 1000);
 			}
 		</script>
 		<% } %>
@@ -51,12 +65,9 @@
 							Notifications
 						</div>
 						<div class="dropdown-menu floating" aria-labelledby="dropdownMenuButton" id="notifications">
-							<div class="notification" align="center" style="width: 300px">
-								<span class="words">You did a thing</span>
-								<div class="interaction"><button class="btn">ok</button></div>
-							</div>
 						</div>
 					</div>
+					<div id="notify" style="background-color: red; border-radius: 50%; width: 10px; height: 10px; display: none;"></div>
 				</li>
 			<% } else { %>
 				<li <%- title != 'Login' ? 'class="nav-item"' : 'class="nav-item active"' %>><a class="nav-link" href="./login">Log In</a></li>

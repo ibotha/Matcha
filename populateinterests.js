@@ -41,7 +41,6 @@ exports.ready = function ready() {
 								if (err) throw err;
 								database.con.query("INSERT IGNORE INTO `interests` (`catagory`, `name`) VALUES ('" + result[0].id + "', '" + lin.interest + "');", function(err){
 										if (err) throw err;
-										console.log(lin);
 								});
 							});
 					});

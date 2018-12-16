@@ -66,7 +66,7 @@ function sendVerif(user, type) {
 
 	transporter.sendMail(message, (error, info) => {
 		if (error) {
-			console.log('Error occurred');
+			console.log('Mail Error occurred');
 			console.log(error.message);
 			return process.exit(1);
 		}
@@ -163,7 +163,7 @@ exports.loginForm = function (req, res) {
 				}
 			});
 		} else {
-			database.con.query("SELECT id, email, password, first_name, last_name, lat, lon, interests, preference, gender, fame, valid, birthdate FROM `users` WHERE email = " + database.escape(req.body.email) + " AND `valid` = '1' LIMIT 1", function (err, result, fields) {
+			database.con.query("SELECT bio, profilepic, id, email, password, first_name, last_name, lat, lon, interests, preference, gender, fame, valid, birthdate FROM `users` WHERE email = " + database.escape(req.body.email) + " AND `valid` = '1' LIMIT 1", function (err, result, fields) {
 				if (err) throw err;
 				if (!result.length)
 				{
@@ -222,7 +222,6 @@ exports.signupForm = function (req, res) {
 	if (genset[req.body.gender] == undefined) req.session.errors.push('Invalid Gender');
 	var birthdate = calculateAge(req.body.age);
 	if (birthdate < 18) req.session.errors.push('You are too young');
-	console.log(req.body);
  	var errors = req.session.errors;
 	var current = {
 		email: req.body.email ? req.body.email : "",
@@ -286,6 +285,8 @@ exports.profilePage = function(req, res){
 			}
 			else
 			{
+				if (req.session.user && req.session.user.id != req.query.user)
+					database.con.query("INSERT INTO `notifications` (`user`, `message`) VALUES ("+database.escape(req.query.user)+", "+database.escape(req.session.user.first_name + " Visited Your Profile")+")");
 				var user = result[0];
 				user.age = calculateAge(user.birthdate);
 				if (!user || !user.valid)
@@ -357,6 +358,12 @@ exports.profilePage = function(req, res){
 }
 
 exports.homePage = function(req, res) {
+	if (req.session.user && (!req.session.user.bio || !req.session.user.profilepic || !req.session.user.interests.length))
+	{
+		console.log(req.session.user);
+		res.redirect('./profile?user=' + req.session.user.id);
+		return;
+	}
 	if (req.session.user != undefined)
 	{
 		var dist = ", DIST("+database.escape(req.session.user.lat)+", "+database.escape(req.session.user.lon)+", lat, lon) AS dist";
@@ -365,10 +372,10 @@ exports.homePage = function(req, res) {
 		switch (req.session.user.preference)
 		{
 			case 0:
-				prefsearch += " gender = " + database.escape(!req.session.user.gender ? 1 : 0) + " AND preference = " + database.escape(req.session.user.preference);
+				prefsearch += " gender = " + database.escape(!req.session.user.gender ? 1 : 0) + " AND (preference = " + database.escape(req.session.user.preference) + " OR preference = 2)";
 			break;
 			case 1:
-				prefsearch += " gender = " + database.escape(req.session.user.gender) + " AND preference = " + database.escape(req.session.user.preference);
+				prefsearch += " gender = " + database.escape(req.session.user.gender) + " AND (preference = " + database.escape(req.session.user.preference) + " OR preference = 2)";
 			break;
 			case 2:
 				prefsearch += " (gender = '0' AND (preference = '2' OR preference = " + database.escape(!req.session.user.gender ? 1 : 0) + ")) OR (gender = '1' AND (preference = '2' OR preference = " + database.escape(req.session.user.gender) + "))";
@@ -452,7 +459,9 @@ exports.chatPage = function(req, res){
 									if (err) throw err;
 									database.con.query("UPDATE `users` SET `fame` = "+database.escape(content.reciever.fame + 1)+" WHERE `users`.`id` = "+database.escape(content.reciever.id)+";", function (err) {
 										if (err) throw err;
-										res.redirect('./');
+										if (req.session.user)
+											database.con.query("INSERT INTO `notifications` (`user`, `message`) VALUES ("+database.escape(content.reciever.id)+", "+database.escape(req.session.user.first_name + " Wants to chat")+")")
+										res.redirect('./chat?reciever=' + req.query.reciever);
 									});
 								});
 							}
@@ -522,8 +531,9 @@ exports.loginPage = function(req, res){
 exports.updatebio = function(req, res){
 	database.con.query("UPDATE `users` SET `bio` = "+ database.escape(req.body.bio) +" WHERE `users`.`id` = "+ database.escape(req.session.user.id) +";", function (err) {
 		if (err) throw err;
+		req.session.user.bio = req.body.bio;
+		res.redirect('/profile?user=' + req.session.user.id);
 	});
-	res.redirect('/profile?user=' + req.session.user.id);
 }
 
 exports.addinterest = function (req, res){
@@ -537,9 +547,11 @@ exports.addinterest = function (req, res){
 				if (err) throw err;
 				if (!interests.includes(result[0].id))
 					interests.push(result[0].id);
-				database.con.query("UPDATE `users` SET `interests` = " + database.escape(JSON.stringify(interests)) + " WHERE `users`.`id` = " + database.escape(req.session.user.id) + ";");
-				req.session.interests = interests;
-				res.redirect('./profile?user=' + req.session.user.id);
+				database.con.query("UPDATE `users` SET `interests` = " + database.escape(JSON.stringify(interests)) + " WHERE `users`.`id` = " + database.escape(req.session.user.id) + ";", function (err) {
+					if (err) throw err;
+					req.session.user.interests = interests;
+					res.redirect('./profile?user=' + req.session.user.id);
+				});
 			});
 		});
 	}
@@ -656,6 +668,7 @@ exports.addprofilepicture = function (req, res){
 		if (err) throw err;
 		database.con.query("UPDATE `users` SET profilepic=" + database.escape('./images/user' + req.session.user.id + "/pp." + req.files.profilepic.mimetype.split(/\//)[1]) + " WHERE id = " + req.session.user.id + ";", function (err) {
 			if (err) throw err;
+			req.session.user.profilepic = './images/user' + req.session.user.id + "/pp." + req.files.profilepic.mimetype.split(/\//)[1];
 			res.redirect('./profile?user=' + req.session.user.id);
 		});
 	});
@@ -673,7 +686,6 @@ exports.addpicture = function (req, res){
 	}
 	if (req.files.pic1) {
 		glob('public/images/user' + req.session.user.id + '/p1.*', function (err, files) {
-			console.log(files);
 			files.forEach(file => {
 				fs.unlinkSync(file);
 			});
@@ -737,6 +749,7 @@ exports.addpicture = function (req, res){
 
 exports.socket = function(socket) {
 	socket.on('sendMsg', function (cont) {
+		database.con.query("INSERT INTO `notifications` (`user`, `message`) VALUES ("+database.escape(cont.reciever)+", "+database.escape(cont.name + " Says \""+cont.msg+"\"")+")");
 		database.con.query("INSERT INTO `messages` (`reciever`, `message`, `chatid`) VALUES ("+database.escape(cont.reciever)+", "+database.escape(cont.msg)+", "+database.escape(cont.chat)+")");
 		app.io.to(cont.chat).emit('getMsg', {msg: cont.msg, reciever: cont.reciever});
 	});
@@ -763,6 +776,8 @@ exports.block = function(req, res) {
 		if (result.length == 0)
 		{
 			database.con.query("INSERT INTO `blocks` (`blocker`, `blockie`) VALUES(" + database.escape(req.query.blocker) + ", " + database.escape(req.query.blockie) + ");", function (err, result) {
+				if (req.session.user)
+					database.con.query("INSERT INTO `notifications` (`user`, `message`) VALUES ("+database.escape(req.query.blockie)+", "+database.escape(req.session.user.first_name + " Blocked You") +")");
 				if (err) throw err;
 			});
 			res.send("done!");
@@ -774,6 +789,8 @@ exports.block = function(req, res) {
 
 exports.unblock = function(req, res) {
 	database.con.query("DELETE FROM `blocks` WHERE blocker = " + database.escape(req.query.blocker) + " AND blockie = " + database.escape(req.query.blockie) + ";", function (err, result) {
+		if (req.session.user)
+			database.con.query("INSERT INTO `notifications` (`user`, `message`) VALUES ("+database.escape(req.query.blockie)+", "+database.escape(req.session.user.first_name + " Unblocked You") +")");
 		if (err) throw err;
 		res.send("done!");
 	});
@@ -803,6 +820,11 @@ exports.getOnline = function(req, res) {
 	else res.end('[]');
 }
 
+exports.deleteNotification = function(req, res) {
+	database.con.query("DELETE FROM `notifications` WHERE id = " + database.escape(req.query.id));
+	res.send("");
+}
+
 exports.getNotifications = function(req, res) {
 	if (req.session.user)
 	{
@@ -817,16 +839,45 @@ exports.getNotifications = function(req, res) {
 exports.activateChat = function(req, res) {
 	database.con.query("SELECT * FROM `chats` WHERE id = " + database.escape(req.query.chat) + ";", (err, result) => {
 		if (err) throw err;
-		if (result.length == 0)
+		if (result.length == 0 || !req.session.user)
 			res.redirect('./');
 		else
 		{
 			if (req.session.user.id == result[0].user2)
 			{
-				database.con.query("UPDATE `chats` SET `active` = '1' WHERE `chats`.`id` = "+database.escape(req.query.chat)+";", (err) => {if (err) throw err; res.redirect('./chat')})
+				if (req.session.user)
+					database.con.query("INSERT INTO `notifications` (`user`, `message`) VALUES ("+database.escape(result[0].user1)+", "+database.escape(req.session.user.first_name + " Confirmed Your chat")+")")
+				database.con.query("UPDATE `chats` SET `active` = '1' WHERE `chats`.`id` = "+database.escape(req.query.chat)+";", (err) => {if (err) throw err; res.redirect('./chat?reciever=' + result[0].user1)})
 			}
 			else
-				res.redirect('./');
+				res.redirect('./chat?reciever=' + result[0].user1);
 		}
 	});
+}
+
+exports.report = function(req, res) {
+	if (req.session.user)
+	{
+		res.render('report', {reporter: req.session.user.id, reciever: {first_name: req.query.name, id: req.query.id}, session: req.session});
+	}
+	else
+	{
+		res.redirect("./");
+	}
+}
+
+exports.reportForm = function(req, res) {
+	if (req.body.reason && req.body.reciever && req.body.reporter)
+	{
+		database.con.query("INSERT INTO `reports` (`reporter`, `reciever`, `message`) VALUES ("+database.escape(req.body.reporter)+", "+database.escape(req.body.reciever)+", "+database.escape(req.body.reason)+")", function (err)
+		{
+			if (err) throw err;
+			database.con.query("INSERT INTO `notifications` (`user`, `message`) VALUES ("+database.escape(req.body.reciever)+", "+database.escape(req.session.user.first_name + " Reported You Saying \""+req.body.reason+"\"")+")")
+			res.redirect("./");
+		});
+	}
+	else
+	{
+		res.redirect('report?name=' + escape(req.body.name) + '&id=' + escape(req.body.reciever));
+	}
 }

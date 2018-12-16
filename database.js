@@ -45,11 +45,18 @@ var tables = {
 	"`creation` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP," +
 	"PRIMARY KEY (id)" +
 	")",
+	reports: "CREATE TABLE IF NOT EXISTS `matcha`.`reports` (" +
+	"id int NOT NULL AUTO_INCREMENT," +
+	"reporter int NOT NULL," +
+	"reciever int NOT NULL," +
+	"message varchar(500) NOT NULL," +
+	"`creation` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP," +
+	"PRIMARY KEY (id)" +
+	")",
 	notifications: "CREATE TABLE IF NOT EXISTS `matcha`.`notifications` (" +
 	"id int NOT NULL AUTO_INCREMENT," +
 	"user int NOT NULL," +
 	"message varchar(100)," +
-	"interaction varchar(1000) NOT NULL," +
 	"PRIMARY KEY (id)" +
 	")",
 	chats: "CREATE TABLE IF NOT EXISTS `matcha`.`chats` (" +
@@ -158,6 +165,10 @@ function createTables(err) {
 	con.query(tables.messages, function (err) {
 		if (err) throw err;
 		console.log("messages table created");
+	});
+	con.query(tables.reports, function (err) {
+		if (err) throw err;
+		console.log("reports table created");
 	});
 	con.query(tables.chats, function (err) {
 		if (err) throw err;
