@@ -30,14 +30,13 @@
 			window.onload = function ()
 			{
 				setInterval(function () {
-					document.getElementById("notify").style.display="none";
 					post('/getNotifications', {user: <%-session.user.id%>}).done(function(data) {
 						notifications = JSON.parse(data);
+						document.getElementById("dropdownMenuButton").innerHTML = "Notifications" + (notifications.length ? "("+notifications.length+")" : "");
 						var note = document.getElementById("notifications");
 						note.innerHTML = "";
 						notifications.forEach(n => {
-							document.getElementById("notify").style.display="block";
-							note.innerHTML += "<a onclick=\"deleteNotification("+n.id+")\">" + n.message + "<hr></a>";
+							note.innerHTML += "<a onclick=\"deleteNotification("+n.id+")\">" + n.message.replace(/</g, "&lt") + "<hr></a>";
 						});
 					});
 				}, 1000);

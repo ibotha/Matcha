@@ -26,7 +26,7 @@
 	</div>
 	<h2 style="display: flex; pointer-events: none; position: fixed; top: 0; right: 37%; text-align: center; z-index: 1000;"> <%= reciever.first_name %><div style="width: 20px; margin-left: 20px; padding-top: 10px;"><div class="onlineicon" id="<%= reciever.id %>"></div></div></h2>
 	<form class="floating" action="" id="chat">
-		<input class="form-control" id="m" autocomplete="off"/>
+		<input class="form-control" id="m" autocomplete="off" maxlength="499"/>
 		<input type="button" class="btn" value="Send" id="submit">
 	</form>
 	<script>
@@ -47,9 +47,14 @@
 		});
 
 		$("#submit").click(function () {
-			socket.emit('sendMsg', {msg: $("#m").val(), reciever: <%= reciever.id %>, chat: <%= chat.id %>, name: "<%=session.user.first_name%>"});
-			$("#m").val('');
-			return false;
+			<% if (locals.session.user) { %>
+				socket.emit('sendMsg', {msg: $("#m").val(), reciever: <%= reciever.id %>, sender: <%= session.user.id %>, chat: <%= chat.id %>, name: "<%=session.user.first_name%>"});
+				$("#m").val('');
+				return false;
+			<% } else { %>
+				$("#m").val('');
+				return false;
+			<% } %>
 		});
 	</script>
 	<% } %>

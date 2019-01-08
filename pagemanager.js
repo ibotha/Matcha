@@ -6,6 +6,12 @@ const nope = require('./nope.js');
 const app = require('./app.js');
 const glob = require('glob');
 
+Number.prototype.toFixedDown = function(digits) {
+	var re = new RegExp("(\\d+\\.\\d{" + digits + "})(\\d)"),
+		m = this.toString().match(re);
+	return m ? parseFloat(m[1]) : this.valueOf();
+};
+
 var transporter = nodemailer.createTransport(
 	{
 		service: 'gmail',
@@ -178,7 +184,11 @@ exports.loginForm = function (req, res) {
 				} else {
 					if (change(req.body.password) == result[0].password)
 					{
-						database.con.query("UPDATE `users` SET lat = " + database.escape(req.body.lat) + ", lon = " + database.escape(req.body.lon) + " WHERE email = " + database.escape(req.body.email) + ";",
+						if (req.body.lat == undefined)
+							req.body.lat = '0.00';
+						if (req.body.lon == undefined)
+							req.body.lon = '0.00';
+						database.con.query("UPDATE `users` SET lat = " + database.escape(req.body.lat.substring(0, 10)) + ", lon = " + database.escape(req.body.lon.substring(0, 10)) + " WHERE email = " + database.escape(req.body.email) + ";",
 						function (err)
 						{
 							if (err) throw err;
@@ -237,7 +247,7 @@ exports.signupForm = function (req, res) {
 			errors: errors,
 			current: current
 		});
-	} else {	
+	} else {
 		var user = null;
 		database.con.query("SELECT * FROM `users` WHERE email = " + database.escape(req.body.email) + "LIMIT 1", function (err, result, fields) {
 			if (err) throw err;
@@ -258,11 +268,7 @@ exports.signupForm = function (req, res) {
 					res.redirect('./');
 				});
 			} else {
-				errors = [
-					{
-						msg: 'Email already taken'
-					}
-				];
+				errors.push('Email already taken');
 				res.render('index', {
 					title: 'Signup',
 					errors: errors,
@@ -749,9 +755,18 @@ exports.addpicture = function (req, res){
 
 exports.socket = function(socket) {
 	socket.on('sendMsg', function (cont) {
-		database.con.query("INSERT INTO `notifications` (`user`, `message`) VALUES ("+database.escape(cont.reciever)+", "+database.escape(cont.name + " Says \""+cont.msg+"\"")+")");
-		database.con.query("INSERT INTO `messages` (`reciever`, `message`, `chatid`) VALUES ("+database.escape(cont.reciever)+", "+database.escape(cont.msg)+", "+database.escape(cont.chat)+")");
-		app.io.to(cont.chat).emit('getMsg', {msg: cont.msg, reciever: cont.reciever});
+		database.con.query("SELECT * FROM `blocks` WHERE (`blocker` = "+database.escape(cont.reciever)+" AND `blockie` = "+database.escape(cont.sender)+") OR (`blockie` = "+database.escape(cont.reciever)+" AND `blocker` = "+database.escape(cont.sender)+")", (err, result) => {
+			if (!err && result.length < 1)
+			{
+				database.con.query("INSERT INTO `notifications` (`user`, `message`) VALUES ("+database.escape(cont.reciever)+", "+database.escape("You have a message from " + cont.name)+")", (err, result) => {
+					if (err) throw err;
+				});
+				database.con.query("INSERT INTO `messages` (`reciever`, `message`, `chatid`) VALUES ("+database.escape(cont.reciever)+", "+database.escape(cont.msg.substring(0, 499))+", "+database.escape(cont.chat)+")", (err, result) => {
+					if (err) throw err;
+				});
+				app.io.to(cont.chat).emit('getMsg', {msg: cont.msg, reciever: cont.reciever});
+			}
+		});
 	});
 
 	socket.on('init', function (chat) {
@@ -872,7 +887,7 @@ exports.reportForm = function(req, res) {
 		database.con.query("INSERT INTO `reports` (`reporter`, `reciever`, `message`) VALUES ("+database.escape(req.body.reporter)+", "+database.escape(req.body.reciever)+", "+database.escape(req.body.reason)+")", function (err)
 		{
 			if (err) throw err;
-			database.con.query("INSERT INTO `notifications` (`user`, `message`) VALUES ("+database.escape(req.body.reciever)+", "+database.escape(req.session.user.first_name + " Reported You Saying \""+req.body.reason+"\"")+")")
+			database.con.query("INSERT INTO `notifications` (`user`, `message`) VALUES ("+database.escape(req.body.reciever)+", "+database.escape(req.session.user.first_name + " Reported You")+")")
 			res.redirect("./");
 		});
 	}
