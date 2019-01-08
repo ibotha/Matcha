@@ -601,10 +601,17 @@ exports.change = function (req, res){
 		if (req.body.email.length>100) req.session.errors.push('Email too long');
 		if (req.session.errors.length == 0)
 		{
-			database.con.query("UPDATE `users` SET `email` = " + database.escape(req.body.email) + " WHERE `id` = " + database.escape(req.session.user.id) + ";", function(err){
-				if(err) throw err
-				req.session.user.email = req.body.email;
-				res.redirect('./profile?user=' + req.session.user.id);
+			database.con.query("SELECT * FROM `users` WHERE `email` = "+database.escape(req.body.email)+";", (err, result) => {
+				if (!err && result.length < 0)
+					database.con.query("UPDATE `users` SET `email` = " + database.escape(req.body.email) + " WHERE `id` = " + database.escape(req.session.user.id) + ";", function(err){
+						if(err) throw err
+						req.session.user.email = req.body.email;
+					});
+				else
+				{
+					req.session.errors.push("email taken");
+					res.redirect('./profile?user=' + req.session.user.id);
+				}
 			});
 		} else
 		res.redirect('./profile?user=' + req.session.user.id);
