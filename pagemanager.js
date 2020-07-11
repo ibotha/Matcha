@@ -14,9 +14,10 @@ Number.prototype.toFixedDown = function(digits) {
 
 var transporter = nodemailer.createTransport(
 	{
-		service: 'gmail',
+		host: "smtp.gmail.com",
+		port: 587,
+		secure: false,
 		auth: nope.auth,
-		logger: false,
 		debug: false
 	},{
 		from: 'Matcha <ibothawebadmi@gmail.com>',
@@ -169,7 +170,7 @@ exports.loginForm = function (req, res) {
 				}
 			});
 		} else {
-			database.con.query("SELECT bio, profilepic, id, email, password, first_name, last_name, lat, lon, interests, preference, gender, fame, valid, birthdate FROM `users` WHERE email = " + database.escape(req.body.email) + " AND `valid` = '1' LIMIT 1", function (err, result, fields) {
+			database.con.query("SELECT bio, profilepic, id, email, password, first_name, last_name, lat, lon, CONCAT('[', GROUP_CONCAT( `userinterests`.`interest` SEPARATOR ', ' ), ']') AS interests, preference, gender, fame, valid, birthdate FROM `users` LEFT JOIN `userinterests` ON `users`.`id`=`userinterests`.`user` WHERE email = " + database.escape(req.body.email) + " AND `valid` = '1' GROUP BY `users`.`id` LIMIT 1", function (err, result, fields) {
 				if (err) throw err;
 				if (!result.length)
 				{
@@ -193,7 +194,6 @@ exports.loginForm = function (req, res) {
 						{
 							if (err) throw err;
 							result[0].age = calculateAge(result[0].birthdate)
-							result[0].interests = JSON.parse(result[0].interests);
 							req.session.user = result[0];
 							res.redirect('./');
 						});
@@ -283,7 +283,7 @@ exports.profilePage = function(req, res){
 	var errors = req.session.errors;
 	req.session.errors = [];
 	if (req.query.user)
-		database.con.query("SELECT * FROM `users` WHERE id = " + database.escape(req.query.user) + "LIMIT 1", function (err, result, fields) {
+		database.con.query({sql: "SELECT `users`.*, CONCAT('[', GROUP_CONCAT( `userinterests`.`interest` SEPARATOR ', ' ), ']') AS interests FROM `users` LEFT JOIN `userinterests` ON `users`.`id`=`userinterests`.`user` WHERE id = ? GROUP BY `users`.`id` LIMIT 1"}, [req.query.user], function (err, result, fields) {
 			if (err) throw err;
 			if (result.length == 0)
 			{
@@ -299,7 +299,7 @@ exports.profilePage = function(req, res){
 					res.redirect('./');
 				if (user)
 				{
-					user.interests = JSON.parse(user.interests);
+					user.interests = user.interests != null ? JSON.parse(user.interests) : [];
 					database.con.query("SELECT * FROM `catagories`", function (err, result, fields) {
 						if (err) throw err;
 						var cats = [];
@@ -311,7 +311,7 @@ exports.profilePage = function(req, res){
 								cats.push({name: cat.name, interests: ints});
 								if (done == (result.length - 1 + user.interests.length))
 								{
-									user.interests = intlist;
+									user.interestnames = intlist;
 									if (req.session.user)
 										res.render('index', {
 											title: 'Profile',
@@ -336,7 +336,7 @@ exports.profilePage = function(req, res){
 								intlist.push(resu[0].name);
 								if (done == (result.length - 1 + user.interests.length))
 								{
-									user.interests = intlist;
+									user.interestnames = intlist;
 									if (req.session.user)
 										res.render('index', {
 											title: 'Profile',
@@ -373,7 +373,8 @@ exports.homePage = function(req, res) {
 	if (req.session.user != undefined)
 	{
 		var dist = ", DIST("+database.escape(req.session.user.lat)+", "+database.escape(req.session.user.lon)+", lat, lon) AS dist";
-		var score = ", SCORE("+database.escape(JSON.stringify(req.session.user.interests))+", interests, '50' + fame - DIST("+database.escape(req.session.user.lat)+", "+database.escape(req.session.user.lon)+", lat, lon) / 4) AS score"
+		var score = ", SCORE("+database.escape(JSON.stringify(req.session.user.id))+", `users`.`id`" +
+		", '50' + fame - DIST("+database.escape(req.session.user.lat)+", "+database.escape(req.session.user.lon)+", lat, lon) / 4) AS score"
 		var prefsearch = ' AND id <> ' + database.escape(req.session.user.id) + " AND";
 		switch (req.session.user.preference)
 		{
@@ -390,12 +391,28 @@ exports.homePage = function(req, res) {
 	}
 	else
 		var prefsearch = '', dist = '', score = '';
-	var statement = "SELECT id, first_name, last_name, pic1, profilepic, birthdate, fame, bio, gender, preference, interests" + dist + score +
-	", blocks.blocker, blocks.blockie FROM `users` LEFT JOIN blocks ON blocks.blocker=" + (req.session.user?database.escape(req.session.user.id):"0") + " AND blocks.blockie=users.id WHERE valid = 1 AND blocks.blockie IS NULL " + prefsearch +
-	" ORDER BY " + (score ? "score DESC," : "") + (dist ? "dist, " : "") + "fame DESC;";
+	var statement = "SELECT id, first_name, last_name, pic1, profilepic, birthdate, fame, bio, gender, preference, CONCAT('[', GROUP_CONCAT( `userinterests`.`interest` SEPARATOR ', ' ), ']') AS interests" + dist + score +
+	", b1.blocker, b1.blockie, b2.blocker, b2.blockie FROM `users` LEFT JOIN `userinterests` ON `userinterests`.`user`=`users`.`id` LEFT JOIN blocks b1 ON (b1.blockie=" + (req.session.user?database.escape(req.session.user.id):"0") + " AND b1.blocker=users.id) LEFT JOIN blocks b2 ON (b2.blocker=" + (req.session.user?database.escape(req.session.user.id):"0") + " AND b2.blockie=users.id) WHERE valid = 1 AND b1.blockie IS NULL AND b2.blockie IS NULL " + prefsearch +
+	" GROUP BY `users`.`id` ORDER BY " + (score ? "score DESC," : "") + (dist ? "dist, " : "") + "fame DESC;";
 	database.con.query(statement, function (err, result) {
 		if (err) throw err;
 		database.con.query("SELECT * FROM `interests`;", function (err, interests) {
+			if (result.length == 0) {
+				if (req.session.user)
+					res.render('index', {
+						title: 'Home',
+						session: req.session,
+						users: [],
+						interests: interests
+					});
+				else
+					res.render('index', {
+						title: 'Home',
+						users: [],
+						interests: interests
+					});
+				return
+			}
 			if (err) throw err;
 			var done = 0;
 			result.forEach(user => {
@@ -545,19 +562,12 @@ exports.updatebio = function(req, res){
 exports.addinterest = function (req, res){
 	if (req.session.user)
 	{
-		database.con.query("SELECT * FROM `users` WHERE id = " + database.escape(req.session.user.id) + " LIMIT 1;", function(err, result) {
+		database.con.query({sql: "SELECT * FROM `users` WHERE id = ? LIMIT 1;"},[req.session.user.id], function(err, result) {
 			if (err) throw err;
 			var user = result[0];
-			var interests = JSON.parse(user.interests);
-			database.con.query("SELECT * FROM `interests` WHERE name = " + database.escape(req.query.interest) + " LIMIT 1;", function(err, result) {
+			database.con.query({sql: "INSERT IGNORE INTO `userinterests` (`user`, `interest`) VALUES (?, ?);"},[req.session.user.id, req.query.interest], function (err) {
 				if (err) throw err;
-				if (!interests.includes(result[0].id))
-					interests.push(result[0].id);
-				database.con.query("UPDATE `users` SET `interests` = " + database.escape(JSON.stringify(interests)) + " WHERE `users`.`id` = " + database.escape(req.session.user.id) + ";", function (err) {
-					if (err) throw err;
-					req.session.user.interests = interests;
-					res.redirect('./profile?user=' + req.session.user.id);
-				});
+				res.redirect('./profile?user=' + req.session.user.id);
 			});
 		});
 	}
@@ -568,23 +578,11 @@ exports.addinterest = function (req, res){
 exports.removeinterest = function (req, res){
 	if (req.session.user)
 	{
-		database.con.query("SELECT * FROM `users` WHERE id = " + database.escape(req.session.user.id) + " LIMIT 1;", function(err, result) {
+		database.con.query({sql: "SELECT * FROM `users` WHERE id = ? LIMIT 1;"},[req.session.user.id], function(err, result) {
 			if (err) throw err;
 			var user = result[0];
-			var interests = JSON.parse(user.interests);
-			database.con.query("SELECT * FROM `interests` WHERE name = " + database.escape(req.query.remove) + " LIMIT 1;", function(err, result) {
+			database.con.query({sql: "DELETE FROM `userinterests` WHERE `user`=? AND `interest`=?;"},[req.session.user.id, req.query.interest], function (err) {
 				if (err) throw err;
-				if (interests.includes(result[0].id))
-				{
-					var temp = [];
-					interests.forEach(trest => {
-						if (trest != result[0].id)
-							temp.push(trest);
-					});
-					interests = temp;
-				}
-				database.con.query("UPDATE `users` SET `interests` = " + database.escape(JSON.stringify(interests)) + " WHERE `users`.`id` = " + database.escape(req.session.user.id) + ";");
-				req.session.interest = interests;
 				res.redirect('./profile?user=' + req.session.user.id);
 			});
 		});
@@ -601,17 +599,10 @@ exports.change = function (req, res){
 		if (req.body.email.length>100) req.session.errors.push('Email too long');
 		if (req.session.errors.length == 0)
 		{
-			database.con.query("SELECT * FROM `users` WHERE `email` = "+database.escape(req.body.email)+";", (err, result) => {
-				if (!err && result.length < 0)
-					database.con.query("UPDATE `users` SET `email` = " + database.escape(req.body.email) + " WHERE `id` = " + database.escape(req.session.user.id) + ";", function(err){
-						if(err) throw err
-						req.session.user.email = req.body.email;
-					});
-				else
-				{
-					req.session.errors.push("email taken");
-					res.redirect('./profile?user=' + req.session.user.id);
-				}
+			database.con.query("UPDATE `users` SET `email` = " + database.escape(req.body.email) + " WHERE `id` = " + database.escape(req.session.user.id) + ";", function(err){
+				if(err) throw err
+				req.session.user.email = req.body.email;
+				res.redirect('./profile?user=' + req.session.user.id);
 			});
 		} else
 		res.redirect('./profile?user=' + req.session.user.id);
@@ -667,7 +658,7 @@ exports.addprofilepicture = function (req, res){
 	var reader = new FileReader();
 	reader.setNodeChunkedEncoding(true);
 	if (!fs.existsSync('public/images')){
-		fs.mkdirSync('publicimages');
+		fs.mkdirSync('public/images');
 	}
 	if (!fs.existsSync('public/images/user' + req.session.user.id)){
 		fs.mkdirSync('public/images/user' + req.session.user.id);
@@ -676,13 +667,13 @@ exports.addprofilepicture = function (req, res){
 		files.forEach(file => {
 			fs.unlinkSync(file);
 		});
-	});
-	req.files.profilepic.mv(('./public/images/user' + req.session.user.id + "/pp." + req.files.profilepic.mimetype.split(/\//)[1]), function (err) {
-		if (err) throw err;
-		database.con.query("UPDATE `users` SET profilepic=" + database.escape('./images/user' + req.session.user.id + "/pp." + req.files.profilepic.mimetype.split(/\//)[1]) + " WHERE id = " + req.session.user.id + ";", function (err) {
+		req.files.profilepic.mv(('./public/images/user' + req.session.user.id + "/pp." + req.files.profilepic.mimetype.split(/\//)[1]), function (err) {
 			if (err) throw err;
-			req.session.user.profilepic = './images/user' + req.session.user.id + "/pp." + req.files.profilepic.mimetype.split(/\//)[1];
-			res.redirect('./profile?user=' + req.session.user.id);
+			database.con.query("UPDATE `users` SET profilepic=" + database.escape('./images/user' + req.session.user.id + "/pp." + req.files.profilepic.mimetype.split(/\//)[1]) + " WHERE id = " + req.session.user.id + ";", function (err) {
+				if (err) throw err;
+				req.session.user.profilepic = './images/user' + req.session.user.id + "/pp." + req.files.profilepic.mimetype.split(/\//)[1];
+				res.redirect('./profile?user=' + req.session.user.id);
+			});
 		});
 	});
 }
@@ -702,12 +693,12 @@ exports.addpicture = function (req, res){
 			files.forEach(file => {
 				fs.unlinkSync(file);
 			});
-		});
-		req.files.pic1.mv(('./public/images/user' + req.session.user.id + "/p1." + req.files.pic1.mimetype.split(/\//)[1]), function (err) {
-			if (err) throw err;
-			database.con.query("UPDATE `users` SET pic1=" + database.escape('./images/user' + req.session.user.id + "/p1." + req.files.pic1.mimetype.split(/\//)[1]) + " WHERE id = " + req.session.user.id + ";", function (err) {
+			req.files.pic1.mv(('./public/images/user' + req.session.user.id + "/p1." + req.files.pic1.mimetype.split(/\//)[1]), function (err) {
 				if (err) throw err;
-				res.redirect('./profile?user=' + req.session.user.id);
+				database.con.query("UPDATE `users` SET pic1=" + database.escape('./images/user' + req.session.user.id + "/p1." + req.files.pic1.mimetype.split(/\//)[1]) + " WHERE id = " + req.session.user.id + ";", function (err) {
+					if (err) throw err;
+					res.redirect('./profile?user=' + req.session.user.id);
+				});
 			});
 		});
 	}
@@ -718,12 +709,12 @@ exports.addpicture = function (req, res){
 			files.forEach(file => {
 				fs.unlinkSync(file);
 			});
-		});
-		req.files.pic2.mv(('./public/images/user' + req.session.user.id + "/p2." + req.files.pic2.mimetype.split(/\//)[1]), function (err) {
-			if (err) throw err;
-			database.con.query("UPDATE `users` SET pic2=" + database.escape('./images/user' + req.session.user.id + "/p2." + req.files.pic2.mimetype.split(/\//)[1]) + " WHERE id = " + req.session.user.id + ";", function (err) {
+			req.files.pic2.mv(('./public/images/user' + req.session.user.id + "/p2." + req.files.pic2.mimetype.split(/\//)[1]), function (err) {
 				if (err) throw err;
-				res.redirect('./profile?user=' + req.session.user.id);
+				database.con.query("UPDATE `users` SET pic2=" + database.escape('./images/user' + req.session.user.id + "/p2." + req.files.pic2.mimetype.split(/\//)[1]) + " WHERE id = " + req.session.user.id + ";", function (err) {
+					if (err) throw err;
+					res.redirect('./profile?user=' + req.session.user.id);
+				});
 			});
 		});
 	}
@@ -734,12 +725,12 @@ exports.addpicture = function (req, res){
 			files.forEach(file => {
 				fs.unlinkSync(file);
 			});
-		});
-		req.files.pic3.mv(('./public/images/user' + req.session.user.id + "/p3." + req.files.pic3.mimetype.split(/\//)[1]), function (err) {
-			if (err) throw err;
-			database.con.query("UPDATE `users` SET pic3=" + database.escape('./images/user' + req.session.user.id + "/p3." + req.files.pic3.mimetype.split(/\//)[1]) + " WHERE id = " + req.session.user.id + ";", function (err) {
+			req.files.pic3.mv(('./public/images/user' + req.session.user.id + "/p3." + req.files.pic3.mimetype.split(/\//)[1]), function (err) {
 				if (err) throw err;
-				res.redirect('./profile?user=' + req.session.user.id);
+				database.con.query("UPDATE `users` SET pic3=" + database.escape('./images/user' + req.session.user.id + "/p3." + req.files.pic3.mimetype.split(/\//)[1]) + " WHERE id = " + req.session.user.id + ";", function (err) {
+					if (err) throw err;
+					res.redirect('./profile?user=' + req.session.user.id);
+				});
 			});
 		});
 	}
@@ -749,12 +740,12 @@ exports.addpicture = function (req, res){
 			files.forEach(file => {
 				fs.unlinkSync(file);
 			});
-		});
-		req.files.pic4.mv(('./public/images/user' + req.session.user.id + "/p4." + req.files.pic4.mimetype.split(/\//)[1]), function (err) {
-			if (err) throw err;
-			database.con.query("UPDATE `users` SET pic4=" + database.escape('./images/user' + req.session.user.id + "/p4." + req.files.pic4.mimetype.split(/\//)[1]) + " WHERE id = " + req.session.user.id + ";", function (err) {
+			req.files.pic4.mv(('./public/images/user' + req.session.user.id + "/p4." + req.files.pic4.mimetype.split(/\//)[1]), function (err) {
 				if (err) throw err;
-				res.redirect('./profile?user=' + req.session.user.id);
+				database.con.query("UPDATE `users` SET pic4=" + database.escape('./images/user' + req.session.user.id + "/p4." + req.files.pic4.mimetype.split(/\//)[1]) + " WHERE id = " + req.session.user.id + ";", function (err) {
+					if (err) throw err;
+					res.redirect('./profile?user=' + req.session.user.id);
+				});
 			});
 		});
 	}

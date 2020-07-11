@@ -10,7 +10,6 @@ var tables = {
 	"email varchar(100) UNIQUE NOT NULL,"+
 	"password varchar(1000) NOT NULL,"+
 	"verif varchar(1000) NOT NULL,"+
-	"interests varchar(2000) NOT NULL DEFAULT '[]',"+
 	"preference TINYINT NOT NULL,"+
 	"gender TINYINT NOT NULL,"+
 	"bio varchar(2000),"+
@@ -19,17 +18,11 @@ var tables = {
 	"birthdate DATE NOT NULL,"+
 	"lat double,"+
 	"lon double,"+
-	"profilepic blob(4294967295),"+
-	"pic1 blob(4294967295),"+
-	"pic2 blob(4294967295),"+
-	"pic3 blob(4294967295),"+
-	"pic4 blob(4294967295),"+
-	"PRIMARY KEY (id)"+
-	")",
-	interests: "CREATE TABLE IF NOT EXISTS `matcha`.`interests` ("+
-	"id int UNIQUE NOT NULL AUTO_INCREMENT,"+
-	"name varchar(100) UNIQUE NOT NULL,"+
-	"catagory int NOT NULL,"+
+	"profilepic varchar(200),"+
+	"pic1 varchar(200),"+
+	"pic2 varchar(200),"+
+	"pic3 varchar(200),"+
+	"pic4 varchar(200),"+
 	"PRIMARY KEY (id)"+
 	")",
 	catagories: "CREATE TABLE IF NOT EXISTS `matcha`.`catagories` (" +
@@ -37,13 +30,12 @@ var tables = {
 	"name varchar(100) UNIQUE NOT NULL," +
 	"PRIMARY KEY (id)" +
 	")",
-	messages: "CREATE TABLE IF NOT EXISTS `matcha`.`messages` (" +
-	"id int NOT NULL AUTO_INCREMENT," +
-	"chatid int NOT NULL," +
-	"reciever int NOT NULL," +
-	"message varchar(500) NOT NULL," +
-	"`creation` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP," +
-	"PRIMARY KEY (id)" +
+	interests: "CREATE TABLE IF NOT EXISTS `matcha`.`interests` ("+
+	"id int UNIQUE NOT NULL AUTO_INCREMENT,"+
+	"name varchar(100) UNIQUE NOT NULL,"+
+	"catagory int NOT NULL,"+
+	"PRIMARY KEY (id)," +
+	"FOREIGN KEY (catagory) REFERENCES catagories(id) ON DELETE CASCADE" +
 	")",
 	reports: "CREATE TABLE IF NOT EXISTS `matcha`.`reports` (" +
 	"id int NOT NULL AUTO_INCREMENT," +
@@ -51,25 +43,52 @@ var tables = {
 	"reciever int NOT NULL," +
 	"message varchar(500) NOT NULL," +
 	"`creation` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP," +
-	"PRIMARY KEY (id)" +
+	"PRIMARY KEY (id)," +
+	"FOREIGN KEY (reporter) REFERENCES users(id) ON DELETE CASCADE," +
+	"FOREIGN KEY (reciever) REFERENCES users(id) ON DELETE CASCADE" +
 	")",
 	notifications: "CREATE TABLE IF NOT EXISTS `matcha`.`notifications` (" +
 	"id int NOT NULL AUTO_INCREMENT," +
 	"user int NOT NULL," +
 	"message varchar(100)," +
-	"PRIMARY KEY (id)" +
+	"PRIMARY KEY (id)," +
+	"FOREIGN KEY (user) REFERENCES users(id) ON DELETE CASCADE" +
 	")",
 	chats: "CREATE TABLE IF NOT EXISTS `matcha`.`chats` (" +
 	"id int NOT NULL AUTO_INCREMENT," +
 	"user1 int NOT NULL," +
 	"user2 int NOT NULL," +
 	"active bool NOT NULL DEFAULT 0," +
-	"PRIMARY KEY (id)" +
+	"PRIMARY KEY (id)," +
+	"FOREIGN KEY (user1) REFERENCES users(id) ON DELETE CASCADE," +
+	"FOREIGN KEY (user2) REFERENCES users(id) ON DELETE CASCADE" +
+	")",
+	messages: "CREATE TABLE IF NOT EXISTS `matcha`.`messages` (" +
+	"id int NOT NULL AUTO_INCREMENT," +
+	"chatid int NOT NULL," +
+	"reciever int NOT NULL," +
+	"message varchar(500) NOT NULL," +
+	"`creation` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP," +
+	"PRIMARY KEY (id)," +
+	"FOREIGN KEY (reciever) REFERENCES users(id) ON DELETE CASCADE," +
+	"FOREIGN KEY (chatid) REFERENCES chats(id) ON DELETE CASCADE" +
 	")",
 	blocks: "CREATE TABLE IF NOT EXISTS `matcha`.`blocks` (" +
 	"blocker int NOT NULL," +
-	"blockie int NOT NULL" +
+	"blockie int NOT NULL," +
+	"FOREIGN KEY (blocker) REFERENCES users(id) ON DELETE CASCADE," +
+	"FOREIGN KEY (blockie) REFERENCES users(id) ON DELETE CASCADE" +
 	")",
+	userinterests: "CREATE TABLE IF NOT EXISTS `matcha`.`userinterests` (" +
+	"user int NOT NULL," +
+	"interest int NOT NULL," +
+	"FOREIGN KEY (user) REFERENCES users(id) ON DELETE CASCADE," +
+	"FOREIGN KEY (interest) REFERENCES interests(id) ON DELETE CASCADE," +
+	"CONSTRAINT UNIQUENESS UNIQUE (user, interest)" +
+	");"
+}
+
+var funcs = {
 	distfunc:
 	'CREATE FUNCTION DIST(lat1 DOUBLE, lon1 DOUBLE, lat2 DOUBLE, lon2 DOUBLE) RETURNS DOUBLE ' +
 	'DETERMINISTIC ' +
@@ -90,7 +109,7 @@ var tables = {
 	'END',
 	hasfunc:
 	'CREATE FUNCTION `HASINTEREST`(`subinterests` VARCHAR(2000), `needle` INT(11)) RETURNS TINYINT(1) ' +
-	'NOT DETERMINISTIC ' +
+	'READS SQL DATA ' +
 	'BEGIN ' +
 	'DECLARE i INT; ' +
 	'DECLARE sublen INT; ' +
@@ -114,28 +133,14 @@ var tables = {
 	'RETURN 0; ' +
 	'END',
 	scorefunc: 
-	"CREATE DEFINER=`root`@`localhost` FUNCTION `SCORE`(`subinterests` VARCHAR(2000), `interests` VARCHAR(2000), `fame` INT) RETURNS DOUBLE NOT DETERMINISTIC " +
+	"CREATE DEFINER=`root`@`localhost` FUNCTION `SCORE`(`user1` int, `user2` int, `fame` INT) RETURNS DOUBLE NOT DETERMINISTIC " +
+	'READS SQL DATA ' +
 	"BEGIN " +
 	"DECLARE ret DOUBLE; "+
-	"DECLARE i INT; "+
-	"DECLARE sublen INT; "+
-	"DECLARE comma INT; "+
-	"DECLARE search VARCHAR(3); "+
 	"DECLARE interestmatch INT; "+
 	"SET interestmatch = 0; "+
 	"SET ret = fame; "+
-	"SET sublen = LENGTH(subinterests); "+
-	"SET i = 2; "+
-	"WHILE(i < sublen) DO SET comma = LOCATE(',', subinterests, i); "+
-		"IF comma = 0 THEN "+
-			"SET comma = sublen; "+
-		"END IF; "+
-		"SET search = CAST(SUBSTR(subinterests, i, comma - i) AS UNSIGNED); "+
-		"SET i = comma + 1; "+
-		"IF HASINTEREST(interests, search) THEN "+
-		"SET interestmatch = interestmatch + 1; "+
-		"END IF; "+
-	"END WHILE; "+
+	"SELECT COUNT(*) INTO interestmatch from (select distinct interest from userinterests WHERE user=user1) i1 join (select distinct interest from userinterests WHERE user=user2) i2 WHERE i1.interest=i2.interest;" +
 	"SET ret = ret + interestmatch; "+
 	"RETURN ret; "+
 	"END",
@@ -150,55 +155,29 @@ function createTables(err) {
 	if (err) throw err;
 	con.query("USE `matcha`");
 	console.log("Database created");
-	con.query(tables.user, function (err) {
-		if (err) throw err;
-		console.log("user table created");
-	});
-	con.query(tables.interests, function (err) {
-		if (err) throw err;
-		console.log("interests table created");
-	});
-	con.query(tables.catagories, function (err) {
-		if (err) throw err;
-		console.log("catagories table created");
-	});
-	con.query(tables.messages, function (err) {
-		if (err) throw err;
-		console.log("messages table created");
-	});
-	con.query(tables.reports, function (err) {
-		if (err) throw err;
-		console.log("reports table created");
-	});
-	con.query(tables.chats, function (err) {
-		if (err) throw err;
-		console.log("chats table created");
-	});
-	con.query(tables.blocks, function (err) {
-		if (err) throw err;
-		console.log("blocks table created");
-	});
-	con.query(tables.notifications, function (err) {
-		if (err) throw err;
-		console.log("notifications table created");
-	});
+	for (const [key, value] of Object.entries(tables)) {
+		con.query(value, function (err) {
+			if (err) throw err
+				console.log(key + " table created");
+		});
+	}
 	con.query("DROP FUNCTION IF EXISTS DIST;", function (err) {
 		if (err) throw err;
-		con.query(tables.distfunc, function (err) {
+		con.query(funcs.distfunc, function (err) {
 			if (err) throw err;
 			console.log("distfunc created");
 		});
 	});
 	con.query("DROP FUNCTION IF EXISTS HASINTEREST;", function (err) {
 		if (err) throw err;
-		con.query(tables.hasfunc, function (err) {
+		con.query(funcs.hasfunc, function (err) {
 			if (err) throw err;
 			console.log("hasfunc created");
 		});
 	});
 	con.query("DROP FUNCTION IF EXISTS SCORE;", function (err) {
 		if (err) throw err;
-		con.query(tables.scorefunc, function (err) {
+		con.query(funcs.scorefunc, function (err) {
 			if (err) throw err;
 			console.log("scorefunc created");	
 			console.log("\n=================================\n\n");
@@ -217,7 +196,7 @@ function createDatabase(err) {
 con = mysql.createConnection({
 	host: "localhost",
 	user: "root",
-	password: "passwd"
+	password: "password"
 });
 con.connect(createDatabase);
 
