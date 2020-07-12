@@ -137,6 +137,6 @@ The database is structured as follows:
 * `int` *interest* (foreign key to `interests`.`id`)
 
 
-[preview]: ./Preview/Preview.png
+[preview]: ./preview/Preview.png
 [MySql]: https://https://dev.mysql.com/downloads/
 [node.js]: https://nodejs.org/en/download/
