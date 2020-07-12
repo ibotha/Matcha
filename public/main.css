@@ -154,9 +154,9 @@ p
 	{
 		background-color: white;
 		border-radius: 10px;
-		margin-bottom: 20px;
+		margin-bottom: 10px;
 		padding: 10px;
-		box-shadow: 0px 0px 20px black;
+		box-shadow: 0px 0px 5px black;
 	}
 	.floating-change > .divider
 	{

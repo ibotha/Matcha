@@ -3,7 +3,7 @@
 	<% const prefset = { Heterosexual: 0, Homosexual: 1, Bisexual: 2, Other: 3, 0: 'Heterosexual', 1: 'Homosexual', 2: 'Bisexual', 3: 'Other' } %>
 	<div class="container-fluid" style="padding-top: 10px;">
 		<% users.forEach(function (user) { %>
-		<%if (user.bio && user.profilepic && user.interests.length) {%>
+		<%if (user.bio && user.profilepic && user.interests && user.interests.length) {%>
 			<div class="row floating-change" style=<%- (user.pic1 ? "'background-image: url("+user.pic1+");" : "'background-color: rgb(" + (230 + Math.random() * 25) + "," + (230 + Math.random() * 25) + "," + (230 + Math.random() * 25) + ") !important;") + "background-size: cover; background-position: center; background-repeat: no-repeat;'" %>>
 					<div class="col-lg-3">
 						<div class="profile-pic-container floating" id=<%- "'pp-container" + user.id + "'" %>></div>
